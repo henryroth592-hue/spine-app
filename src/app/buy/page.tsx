@@ -210,18 +210,29 @@ export default function BuyPage() {
           {mode === "discount" && (
             <div className="space-y-1">
               <label className="text-xs text-zinc-500">Discount % (e.g. -75)</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={discountInput}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDiscountInput(val);
-                  const parsed = parseFloat(val);
-                  if (!isNaN(parsed)) setDiscountPct(parsed);
-                }}
-                className="border border-zinc-300 rounded-lg px-3 py-2 text-sm w-32"
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const flipped = discountPct * -1;
+                    setDiscountPct(flipped);
+                    setDiscountInput(String(flipped));
+                  }}
+                  className="w-10 h-10 rounded-lg border border-zinc-300 text-lg font-medium flex items-center justify-center text-zinc-700"
+                >±</button>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={discountInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDiscountInput(val);
+                    const parsed = parseFloat(val);
+                    if (!isNaN(parsed)) setDiscountPct(parsed);
+                  }}
+                  className="border border-zinc-300 rounded-lg px-3 py-2 text-sm w-28"
+                />
+              </div>
               {bandPrice !== null && (
                 <p className="text-xs text-zinc-400">Rap: ${Math.round(bandPrice / 0.20).toLocaleString()}/ct</p>
               )}
