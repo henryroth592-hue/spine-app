@@ -18,10 +18,12 @@ export function getRapPrice(shape: Shape, weight: number, color: StoneColor, cla
   const shapePrices = prices[shapeKey];
   if (!shapePrices) return null;
 
-  // Find highest size_from that is <= weight
-  const tiers = Object.keys(shapePrices).map(Number).filter((t) => t <= weight);
-  if (tiers.length === 0) return null;
-  const tier = String(Math.max(...tiers));
+  // Find highest size_from that is <= weight (keep original string key to avoid 1.0 → "1" mismatch)
+  const tierKey = Object.keys(shapePrices)
+    .filter((k) => Number(k) <= weight)
+    .reduce<string | null>((best, k) => best === null || Number(k) > Number(best) ? k : best, null);
+  if (!tierKey) return null;
+  const tier = tierKey;
 
   return shapePrices[tier]?.[color]?.[clarity] ?? null;
 }
