@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Shape, StoneColor, StoneClarity, SingleMode, RecutLocation, SingleCartItem } from "@/lib/types";
 import { giaCertCost, WEIGHT_LOSS, CUT_COST_USA, CUT_COST_CHINA } from "@/lib/certCosts";
+import { getRapPrice, RAP_EXPORTED_AT } from "@/lib/rapLookup";
 import { Chip } from "./Chip";
 
 const uid = () => Math.random().toString(36).slice(2);
@@ -20,7 +21,8 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const [weight, setWeight] = useState<string>("1.10");
   const [color, setColor] = useState<StoneColor>("H");
   const [clarity, setClarity] = useState<StoneClarity>("VS2");
-  const [rapPerCt, setRapPerCt] = useState<string>("");
+  const [rapOverride, setRapOverride] = useState<string>("");
+  const [useRapOverride, setUseRapOverride] = useState(false);
 
   const [mode, setMode] = useState<SingleMode>("as-is");
 
@@ -38,7 +40,10 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const [overridePrice, setOverridePrice] = useState<string>("");
 
   const wt = parseFloat(weight) || 0;
-  const rap = parseFloat(rapPerCt) || 0;
+  const lookedUpRap = wt > 0 ? getRapPrice(shape, wt, color, clarity) : null;
+  const rap = useRapOverride
+    ? (parseFloat(rapOverride) || 0)
+    : (lookedUpRap ?? 0);
   const certCost = giaCertCost(wt);
 
   // ── as-is calcs ──
@@ -52,7 +57,8 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const cuttingCost = wt > 0 ? wt * cutCostPerCt : 0;
   const endCertCost = giaCertCost(endWt);
   const totalRecutCosts = cuttingCost + endCertCost;
-  const endRap = parseFloat(endRapPerCt) || 0;
+  const lookedUpEndRap = endWt > 0 ? getRapPrice(shape, endWt, color, clarity) : null;
+  const endRap = parseFloat(endRapPerCt) || lookedUpEndRap || 0;
 
   const breakeven = useMemo(() => {
     if (!asIsNet || endRap <= 0 || endWt <= 0) return null;
@@ -116,17 +122,32 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
             <Chip label="Fancy" active={shape === "fancy"} onClick={() => setShape("fancy")} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="label">Weight (ct)</label>
-            <input type="text" inputMode="decimal" value={weight}
-              onChange={(e) => setWeight(e.target.value)} className="input w-full" placeholder="1.10" />
-          </div>
-          <div className="space-y-1">
+        <div className="space-y-1">
+          <label className="label">Weight (ct)</label>
+          <input type="text" inputMode="decimal" value={weight}
+            onChange={(e) => setWeight(e.target.value)} className="input w-full" placeholder="1.10" />
+        </div>
+
+        {/* Rap price — auto-lookup with manual override */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-baseline">
             <label className="label">Rap $/ct</label>
-            <input type="text" inputMode="decimal" value={rapPerCt}
-              onChange={(e) => setRapPerCt(e.target.value)} className="input w-full" placeholder="4800" />
+            <button type="button" onClick={() => {
+              setUseRapOverride((v) => !v);
+              if (!useRapOverride && lookedUpRap) setRapOverride(String(lookedUpRap));
+            }} className="text-xs text-zinc-400 underline">
+              {useRapOverride ? "Use list" : "Override"}
+            </button>
           </div>
+          {useRapOverride ? (
+            <input type="text" inputMode="decimal" value={rapOverride}
+              onChange={(e) => setRapOverride(e.target.value)} className="input w-full" placeholder="4800" />
+          ) : (
+            <div className={`input w-full ${lookedUpRap ? "text-zinc-900" : "text-zinc-400"}`}>
+              {lookedUpRap ? `$${lookedUpRap.toLocaleString()}` : wt > 0 ? "Not found — use override" : "Enter weight first"}
+              {lookedUpRap && <span className="ml-2 text-xs text-zinc-400">from {RAP_EXPORTED_AT}</span>}
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <label className="label">Color</label>
@@ -204,7 +225,12 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
               <div className="space-y-1">
                 <label className="text-xs text-zinc-500">End rap $/ct</label>
                 <input type="text" inputMode="decimal" value={endRapPerCt}
-                  onChange={(e) => setEndRapPerCt(e.target.value)} className="input w-full" placeholder="5200" />
+                  onChange={(e) => setEndRapPerCt(e.target.value)}
+                  className="input w-full"
+                  placeholder={lookedUpEndRap ? `$${lookedUpEndRap} (auto)` : "5200"} />
+                {lookedUpEndRap && !endRapPerCt && (
+                  <p className="text-xs text-zinc-400">Using ${lookedUpEndRap}/ct from list — type to override</p>
+                )}
               </div>
             </div>
 
