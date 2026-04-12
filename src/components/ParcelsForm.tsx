@@ -23,21 +23,33 @@ export default function ParcelsForm({ vendor, onAdd }: Props) {
   const [mode, setMode] = useState<PricingMode>("band");
   const [discountPct, setDiscountPct] = useState(-75);
   const [discountInput, setDiscountInput] = useState("-75");
-  const [overridePrice, setOverridePrice] = useState<number | null>(null);
+
+  // Actual weight override
+  const [useActualWeight, setUseActualWeight] = useState(false);
+  const [actualWeightInput, setActualWeightInput] = useState("");
+
+  // Editable total override
+  const [totalOverride, setTotalOverride] = useState("");
 
   const bandPrice = getBandPrice(shape, sizeRange, colorBand, clarity);
-  const effectivePrice = calcEffectivePrice(bandPrice, mode, discountPct, overridePrice);
+  const effectivePrice = calcEffectivePrice(bandPrice, mode, discountPct, null);
   const avgWeight = AVG_WEIGHT[sizeRange] ?? 0.30;
-  const lineTotal = effectivePrice !== null ? Math.round(effectivePrice * avgWeight * qty) : null;
+
+  const actualWeight = parseFloat(actualWeightInput) || 0;
+  const totalWeight = useActualWeight && actualWeight > 0 ? actualWeight : (avgWeight * qty);
+  const calcLineTotal = effectivePrice !== null ? Math.round(effectivePrice * totalWeight) : null;
+  const lineTotal = totalOverride !== "" ? (parseInt(totalOverride.replace(/[^0-9-]/g, "")) || 0) : calcLineTotal;
 
   const handleAdd = useCallback(() => {
     if (!vendor || effectivePrice === null || lineTotal === null) return;
     onAdd({
       id: uid(), itemType: "parcel", vendor, shape, sizeRange, colorBand, clarity,
-      qty, pricingMode: mode, pricePerCt: effectivePrice, avgWeight, lineTotal,
+      qty, pricingMode: mode, pricePerCt: effectivePrice,
+      avgWeight: useActualWeight && actualWeight > 0 ? actualWeight / qty : avgWeight,
+      lineTotal,
       discountPct: mode === "discount" ? discountPct : undefined,
     });
-  }, [vendor, shape, sizeRange, colorBand, clarity, qty, mode, discountPct, overridePrice, effectivePrice, avgWeight, lineTotal, onAdd]);
+  }, [vendor, shape, sizeRange, colorBand, clarity, qty, mode, discountPct, effectivePrice, avgWeight, useActualWeight, actualWeight, lineTotal, onAdd]);
 
   return (
     <div className="space-y-4">
@@ -70,13 +82,30 @@ export default function ParcelsForm({ vendor, onAdd }: Props) {
             {CLARITIES.map((cl) => <Chip key={cl} label={cl} active={clarity === cl} onClick={() => setClarity(cl)} />)}
           </div>
         </div>
-        <div className="space-y-2">
-          <label className="label">Quantity (stones)</label>
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="stepper">−</button>
-            <span className="text-2xl font-semibold w-10 text-center">{qty}</span>
-            <button type="button" onClick={() => setQty((q) => q + 1)} className="stepper">+</button>
+
+        {/* Qty + weight */}
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <label className="label">Quantity (stones)</label>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="stepper">−</button>
+              <span className="text-2xl font-semibold w-10 text-center">{qty}</span>
+              <button type="button" onClick={() => setQty((q) => q + 1)} className="stepper">+</button>
+            </div>
           </div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={useActualWeight} onChange={(e) => { setUseActualWeight(e.target.checked); if (!e.target.checked) setActualWeightInput(""); }} className="rounded" />
+            Specify actual weight
+          </label>
+          {useActualWeight && (
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-500">Total weight (ct)</label>
+              <input type="text" inputMode="decimal" value={actualWeightInput}
+                onChange={(e) => setActualWeightInput(e.target.value)}
+                className="input w-32" placeholder={`${(avgWeight * qty).toFixed(2)}`} />
+              {actualWeight > 0 && <p className="text-xs text-zinc-400">{avgWeight}ct avg × {qty} = {(avgWeight * qty).toFixed(3)}ct expected</p>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -84,8 +113,8 @@ export default function ParcelsForm({ vendor, onAdd }: Props) {
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
         <label className="label">Pricing Mode</label>
         <div className="flex gap-2 flex-wrap">
-          {(["band", "discount", "override"] as PricingMode[]).map((m) => (
-            <Chip key={m} label={m === "band" ? "Sheet -80" : m === "discount" ? "Disc %" : "Override"} active={mode === m} onClick={() => setMode(m)} />
+          {(["band", "discount"] as PricingMode[]).map((m) => (
+            <Chip key={m} label={m === "band" ? "Sheet -80" : "Disc %"} active={mode === m} onClick={() => setMode(m)} />
           ))}
         </div>
 
@@ -102,19 +131,32 @@ export default function ParcelsForm({ vendor, onAdd }: Props) {
             {bandPrice !== null && <p className="text-xs text-zinc-400">Rap: ${Math.round(bandPrice / 0.20).toLocaleString()}/ct</p>}
           </div>
         )}
-        {mode === "override" && (
-          <div className="space-y-1">
-            <label className="text-xs text-zinc-500">Price per carat ($)</label>
-            <input type="text" inputMode="decimal" value={overridePrice ?? ""}
-              onChange={(e) => setOverridePrice(e.target.value ? Number(e.target.value) : null)} className="input w-32" />
-          </div>
-        )}
 
         {bandPrice === null && <p className="text-xs text-amber-600">No sheet price for N+ at this size</p>}
 
-        <div className="pt-2 border-t border-zinc-100 flex justify-between items-center">
-          <div><p className="text-xs text-zinc-400">Per carat</p><p className="text-xl font-bold">{fmt(effectivePrice)}</p></div>
-          <div className="text-right"><p className="text-xs text-zinc-400">× {qty} × {avgWeight}ct</p><p className="text-xl font-bold">{fmt(lineTotal)}</p></div>
+        <div className="pt-2 border-t border-zinc-100 space-y-2">
+          <div className="flex justify-between items-center">
+            <div><p className="text-xs text-zinc-400">Per carat</p><p className="text-xl font-bold">{fmt(effectivePrice)}</p></div>
+            <div className="text-right">
+              <p className="text-xs text-zinc-400">
+                {useActualWeight && actualWeight > 0 ? `${actualWeight}ct actual` : `× ${qty} × ${avgWeight}ct`}
+              </p>
+              <p className="text-xl font-bold">{fmt(calcLineTotal)}</p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-zinc-500">Total override (optional)</label>
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-400 text-sm">$</span>
+              <input type="text" inputMode="numeric" value={totalOverride}
+                onChange={(e) => setTotalOverride(e.target.value)}
+                placeholder={calcLineTotal != null ? String(calcLineTotal) : ""}
+                className="input flex-1" />
+              {totalOverride && (
+                <button type="button" onClick={() => setTotalOverride("")} className="text-xs text-zinc-400 underline shrink-0">clear</button>
+              )}
+            </div>
+          </div>
         </div>
 
         <button type="button" onClick={handleAdd} disabled={!vendor || effectivePrice === null}

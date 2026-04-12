@@ -3,7 +3,7 @@ export type Shape = "round" | "fancy";
 export type SizeRange = "18-22" | "23-29" | "30-39" | "40-49" | "50-69";
 export type ColorBand = "D-G" | "H-J" | "K-M" | "N+";
 export type Clarity = "VS" | "SI1" | "SI2" | "I1" | "I2";
-export type PricingMode = "band" | "discount" | "override";
+export type PricingMode = "band" | "discount";
 
 // ── Single stone ──────────────────────────────────────────────────────────────
 export type StoneColor = "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M";
@@ -73,7 +73,15 @@ export interface MetalCartItem {
   lineTotal: number;
 }
 
-export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem;
+export interface CustomCartItem {
+  id: string;
+  itemType: "custom";
+  vendor: string;
+  description: string;
+  lineTotal: number;
+}
+
+export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem;
 
 export interface PriceTable {
   round: Record<SizeRange, Record<Clarity, Record<ColorBand, number | null>>>;

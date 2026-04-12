@@ -20,8 +20,8 @@ export default function MetalsForm({ vendor, onAdd }: Props) {
   const [category, setCategory] = useState<MetalCategory>("SG");
   const [karat, setKarat] = useState<Karat>("14k");
   const [grams, setGrams] = useState<string>("");
-  const [pctOfSpot, setPctOfSpot] = useState<string>("85");
-  const [pctInput, setPctInput] = useState<string>("85");
+  const [pctOfSpot, setPctOfSpot] = useState<string>("90");
+  const [pctInput, setPctInput] = useState<string>("90");
 
   const [liveSpot, setLiveSpot] = useState<number | null>(null);
   const [spotStatus, setSpotStatus] = useState<"loading" | "live" | "manual" | "error">("loading");
