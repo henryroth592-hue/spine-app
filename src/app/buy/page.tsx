@@ -10,6 +10,15 @@ const fmt = (n: number | null) => n !== null ? `$${n.toLocaleString()}` : "—";
 
 const VENDORS = ["New vendor…", "Walk-in", "Estate buyer", "Dealer A", "Dealer B"];
 
+// Average weight per stone for each size range (used for line total)
+const AVG_WEIGHT: Record<string, number> = {
+  "18-22": 0.20,
+  "23-29": 0.26,
+  "30-39": 0.345,
+  "40-49": 0.445,
+  "50-69": 0.595,
+};
+
 // ── small button ─────────────────────────────────────────────────────────────
 function Chip({
   label, active, onClick, disabled,
@@ -43,6 +52,7 @@ export default function BuyPage() {
   const [qty, setQty] = useState(1);
   const [mode, setMode] = useState<PricingMode>("band");
   const [discountPct, setDiscountPct] = useState<number>(-75);
+  const [discountInput, setDiscountInput] = useState<string>("-75");
   const [overridePrice, setOverridePrice] = useState<number | null>(null);
 
   // ── cart state ──
@@ -53,7 +63,8 @@ export default function BuyPage() {
   const activeVendor = vendor === "New vendor…" ? customVendor.trim() : vendor;
   const bandPrice = getBandPrice(shape, sizeRange, colorBand, clarity);
   const effectivePrice = calcEffectivePrice(bandPrice, mode, discountPct, overridePrice);
-  const lineTotal = effectivePrice !== null ? effectivePrice * qty : null;
+  const avgWeight = AVG_WEIGHT[sizeRange] ?? 0.30;
+  const lineTotal = effectivePrice !== null ? Math.round(effectivePrice * avgWeight * qty) : null;
 
   // ── handlers ──
   const addToCart = useCallback(() => {
@@ -200,9 +211,15 @@ export default function BuyPage() {
             <div className="space-y-1">
               <label className="text-xs text-zinc-500">Discount % (e.g. -75)</label>
               <input
-                type="number"
-                value={discountPct}
-                onChange={(e) => setDiscountPct(Number(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                value={discountInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDiscountInput(val);
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed)) setDiscountPct(parsed);
+                }}
                 className="border border-zinc-300 rounded-lg px-3 py-2 text-sm w-32"
               />
               {bandPrice !== null && (
@@ -230,7 +247,7 @@ export default function BuyPage() {
               <p className="text-xl font-bold text-zinc-900">{fmt(effectivePrice)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-zinc-400">× {qty} stones</p>
+              <p className="text-xs text-zinc-400">× {qty} × {avgWeight}ct</p>
               <p className="text-xl font-bold text-zinc-900">{fmt(lineTotal)}</p>
             </div>
           </div>
