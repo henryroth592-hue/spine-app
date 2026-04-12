@@ -25,7 +25,9 @@ export function getRapPrice(shape: Shape, weight: number, color: StoneColor, cla
   if (!tierKey) return null;
   const tier = tierKey;
 
-  return shapePrices[tier]?.[color]?.[clarity] ?? null;
+  // N- and below: use M rap price (fancy colors excluded — handled upstream)
+  const rapColor = color === "N-" ? "M" : color;
+  return shapePrices[tier]?.[rapColor]?.[clarity] ?? null;
 }
 
 export const RAP_EXPORTED_AT = rapData.exportedAt;

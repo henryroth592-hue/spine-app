@@ -12,8 +12,8 @@ const fmt  = (n: number | null | undefined) => n != null ? `$${Math.round(n).toL
 const fmtP = (n: number | null | undefined) => n != null ? `${n.toFixed(1)}%` : "—";
 
 const SHAPES: SingleShape[] = ["BR","PR","MQ","OV","RA","EM","AS","OE","OM","PS","CU","FA"];
-const COLORS: StoneColor[]   = ["D","E","F","G","H","I","J","K","L","M"];
-const CLARITIES: StoneClarity[] = ["IF","VVS1","VVS2","VS1","VS2","SI1","SI2","I1","I2"];
+const COLORS: StoneColor[]   = ["D","E","F","G","H","I","J","K","L","M","N-"];
+const CLARITIES: StoneClarity[] = ["IF","VVS1","VVS2","VS1","VS2","SI1","SI2","SI3","I1","I2","I3"];
 const LOSS_OPTIONS = [10, 15, 20];
 
 // Smart cut location: >1ct AND J-or-better AND SI2-or-better → USA

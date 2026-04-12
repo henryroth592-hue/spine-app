@@ -7,8 +7,8 @@ export type PricingMode = "band" | "discount";
 
 // ── Single stone ──────────────────────────────────────────────────────────────
 export type SingleShape = "BR" | "PR" | "MQ" | "OV" | "RA" | "EM" | "AS" | "OE" | "OM" | "PS" | "CU" | "FA";
-export type StoneColor = "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M";
-export type StoneClarity = "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "I1" | "I2";
+export type StoneColor = "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N-";
+export type StoneClarity = "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "SI3" | "I1" | "I2" | "I3";
 export type SingleMode = "as-is" | "recut";
 export type RecutLocation = "USA" | "China";
 
