@@ -6,9 +6,10 @@ export type Clarity = "VS" | "SI1" | "SI2" | "I1" | "I2";
 export type PricingMode = "band" | "discount";
 
 // ── Single stone ──────────────────────────────────────────────────────────────
+export type SingleShape = "BR" | "PR" | "MQ" | "OV" | "RA" | "EM" | "AS" | "OE" | "OM" | "PS" | "CU" | "FA";
 export type StoneColor = "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M";
 export type StoneClarity = "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "I1" | "I2";
-export type SingleMode = "as-is" | "recut" | "override";
+export type SingleMode = "as-is" | "recut";
 export type RecutLocation = "USA" | "China";
 
 // ── Metals ────────────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export interface SingleCartItem {
   id: string;
   itemType: "single";
   vendor: string;
-  shape: Shape;
+  shape: SingleShape;
   weight: number;
   color: StoneColor;
   clarity: StoneClarity;
@@ -56,8 +57,6 @@ export interface SingleCartItem {
   recutDiscountPct?: number;
   recutNet?: number;
   breakevenDisc?: number;
-  // override
-  overridePrice?: number;
   lineTotal: number;
 }
 

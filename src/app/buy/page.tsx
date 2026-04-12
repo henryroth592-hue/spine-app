@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem } from "@/lib/types";
+// SingleCartItem.shape is now SingleShape (BR, PR, etc.) — no round/fancy mapping needed
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
 import MetalsForm from "@/components/MetalsForm";
@@ -22,7 +23,7 @@ function cartLabel(item: CartItem): string {
   }
   if (item.itemType === "single") {
     const i = item as SingleCartItem;
-    return `${i.vendor} · ${i.shape === "round" ? "Rnd" : "Fcy"} ${i.weight}ct ${i.color} ${i.clarity} [${i.mode}]`;
+    return `${i.vendor} · ${i.shape} ${i.weight}ct ${i.color} ${i.clarity} [${i.mode}]`;
   }
   if (item.itemType === "metal") {
     const i = item as MetalCartItem;
