@@ -285,15 +285,8 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
           <button type="button" onClick={() => handleAdd("as-is")}
             disabled={!vendor || displayAsIsNet == null}
             className="btn-primary flex-1">
-            {inclRecut ? "Add As-Is" : "Add to Cart"}
+            Add to Cart
           </button>
-          {inclRecut && (
-            <button type="button" onClick={() => handleAdd("recut")}
-              disabled={!vendor || displayRecutNet == null}
-              className="btn-primary flex-1">
-              Add Recut
-            </button>
-          )}
         </div>
       </div>
     </div>

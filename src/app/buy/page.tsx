@@ -10,15 +10,25 @@ import ReceiptModal from "@/components/ReceiptModal";
 
 type AppTab = "parcels" | "singles" | "metals" | "custom";
 
-interface Vendor { name: string; email: string; phone: string; }
+interface Vendor {
+  name: string;
+  email: string;
+  contactName?: string;
+  title?: string;
+  cell?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  social?: string;
+}
 
 const DEFAULT_VENDORS: Vendor[] = [
-  { name: "Walk-in",      email: "", phone: "" },
-  { name: "Estate buyer", email: "", phone: "" },
-  { name: "Dealer A",     email: "", phone: "" },
-  { name: "Dealer B",     email: "", phone: "" },
+  { name: "Walk-in",      email: "" },
+  { name: "Estate buyer", email: "" },
+  { name: "Dealer A",     email: "" },
+  { name: "Dealer B",     email: "" },
 ];
-const STORAGE_KEY = "spine_vendors_v3";
+const STORAGE_KEY = "spine_vendors_v4";
 
 function fmtTotal(n: number) {
   return `$${Math.round(n).toLocaleString()}`;
@@ -67,9 +77,15 @@ export default function BuyPage() {
   // ── Vendor management (localStorage) ──────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>(DEFAULT_VENDORS);
   const [selectedVendor, setSelectedVendor] = useState<string>("Walk-in");
-  const [newName,  setNewName]  = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPhone, setNewPhone] = useState("");
+  const [newName,        setNewName]        = useState("");
+  const [newEmail,       setNewEmail]       = useState("");
+  const [newContactName, setNewContactName] = useState("");
+  const [newTitle,       setNewTitle]       = useState("");
+  const [newCell,        setNewCell]        = useState("");
+  const [newPhone,       setNewPhone]       = useState("");
+  const [newAddress,     setNewAddress]     = useState("");
+  const [newWebsite,     setNewWebsite]     = useState("");
+  const [newSocial,      setNewSocial]      = useState("");
   const [managingVendors, setManagingVendors] = useState(false);
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -88,11 +104,24 @@ export default function BuyPage() {
 
   function addVendor() {
     const name = newName.trim();
-    if (!name || vendors.find((v) => v.name === name)) return;
-    const updated = [...vendors, { name, email: newEmail.trim(), phone: newPhone.trim() }];
+    const email = newEmail.trim();
+    if (!name || !email || vendors.find((v) => v.name === name)) return;
+    const v: Vendor = {
+      name,
+      email,
+      ...(newContactName.trim() && { contactName: newContactName.trim() }),
+      ...(newTitle.trim()       && { title:       newTitle.trim() }),
+      ...(newCell.trim()        && { cell:         newCell.trim() }),
+      ...(newPhone.trim()       && { phone:        newPhone.trim() }),
+      ...(newAddress.trim()     && { address:      newAddress.trim() }),
+      ...(newWebsite.trim()     && { website:      newWebsite.trim() }),
+      ...(newSocial.trim()      && { social:       newSocial.trim() }),
+    };
+    const updated = [...vendors, v];
     persist(updated);
     setSelectedVendor(name);
-    setNewName(""); setNewEmail(""); setNewPhone("");
+    setNewName(""); setNewEmail(""); setNewContactName(""); setNewTitle("");
+    setNewCell(""); setNewPhone(""); setNewAddress(""); setNewWebsite(""); setNewSocial("");
     setManagingVendors(false);
   }
 
@@ -128,9 +157,16 @@ export default function BuyPage() {
       }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      if (data.name || data.company) setNewName(data.company ?? data.name ?? "");
-      if (data.email) setNewEmail(data.email);
-      if (data.phone) setNewPhone(data.phone);
+      if (data.company) setNewName(data.company);
+      else if (data.name) setNewName(data.name);
+      if (data.name && data.company) setNewContactName(data.name);
+      if (data.title)   setNewTitle(data.title);
+      if (data.email)   setNewEmail(data.email);
+      if (data.cell)    setNewCell(data.cell);
+      if (data.phone)   setNewPhone(data.phone);
+      if (data.address) setNewAddress(data.address);
+      if (data.website) setNewWebsite(data.website);
+      if (data.social)  setNewSocial(data.social);
     } catch (err) {
       alert("Could not read card: " + String(err));
     } finally {
@@ -203,8 +239,13 @@ export default function BuyPage() {
                     <button type="button" onClick={() => removeVendor(v.name)}
                       className="text-xs text-red-400 hover:text-red-600">Remove</button>
                   </div>
-                  {v.email && <p className="text-xs text-zinc-400">{v.email}</p>}
-                  {v.phone && <p className="text-xs text-zinc-400">{v.phone}</p>}
+                  {v.contactName && <p className="text-xs text-zinc-500">{v.contactName}{v.title ? ` · ${v.title}` : ""}</p>}
+                  {v.email   && <p className="text-xs text-zinc-400">{v.email}</p>}
+                  {v.cell    && <p className="text-xs text-zinc-400">Cell: {v.cell}</p>}
+                  {v.phone   && <p className="text-xs text-zinc-400">Tel: {v.phone}</p>}
+                  {v.address && <p className="text-xs text-zinc-400">{v.address}</p>}
+                  {v.website && <p className="text-xs text-zinc-400">{v.website}</p>}
+                  {v.social  && <p className="text-xs text-zinc-400">{v.social}</p>}
                 </div>
               ))}
 
@@ -219,12 +260,24 @@ export default function BuyPage() {
                 </label>
 
                 <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-                  className="input w-full" placeholder="Vendor / company name" />
+                  className="input w-full" placeholder="Company / vendor name *" />
                 <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
-                  className="input w-full" placeholder="Email" />
+                  className="input w-full" placeholder="Email *" />
+                <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)}
+                  className="input w-full" placeholder="Contact name" />
+                <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+                  className="input w-full" placeholder="Title" />
+                <input type="tel" inputMode="tel" value={newCell} onChange={(e) => setNewCell(e.target.value)}
+                  className="input w-full" placeholder="Cell" />
                 <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
-                  className="input w-full" placeholder="Phone" />
-                <button type="button" onClick={addVendor} disabled={!newName.trim()}
+                  className="input w-full" placeholder="Office phone" />
+                <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)}
+                  className="input w-full" placeholder="Address" />
+                <input type="url" inputMode="url" value={newWebsite} onChange={(e) => setNewWebsite(e.target.value)}
+                  className="input w-full" placeholder="Website" />
+                <input type="text" value={newSocial} onChange={(e) => setNewSocial(e.target.value)}
+                  className="input w-full" placeholder="Social media" />
+                <button type="button" onClick={addVendor} disabled={!newName.trim() || !newEmail.trim()}
                   className="btn-primary w-full">Add Vendor</button>
               </div>
             </div>
@@ -234,9 +287,9 @@ export default function BuyPage() {
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
                 {vendors.map((v) => <option key={v.name}>{v.name}</option>)}
               </select>
-              {(activeVendor?.email || activeVendor?.phone) && (
+              {(activeVendor?.email || activeVendor?.cell || activeVendor?.phone) && (
                 <p className="text-xs text-zinc-400">
-                  {[activeVendor.email, activeVendor.phone].filter(Boolean).join(" · ")}
+                  {[activeVendor.email, activeVendor.cell ?? activeVendor.phone].filter(Boolean).join(" · ")}
                 </p>
               )}
             </div>
