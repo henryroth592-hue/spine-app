@@ -130,19 +130,30 @@ export default function BuyPage() {
     if (!file) return;
     setScanning(true);
     try {
-      // Use FileReader — works in all browsers including iOS Safari
+      // Resize image to max 1200px before encoding — avoids Vercel 4.5MB payload limit
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result as string;
-          resolve(dataUrl.split(",")[1]); // strip "data:image/jpeg;base64," prefix
-        };
         reader.onerror = reject;
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = reject;
+          img.onload = () => {
+            const MAX = 1200;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement("canvas");
+            canvas.width  = Math.round(img.width  * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            resolve(dataUrl.split(",")[1]);
+          };
+          img.src = reader.result as string;
+        };
         reader.readAsDataURL(file);
       });
 
-      // iPhone HEIC → send as jpeg
-      const mediaType = file.type === "image/heic" || file.type === "" ? "image/jpeg" : file.type;
+      // Always jpeg after canvas resize
+      const mediaType = "image/jpeg";
 
       const res = await fetch("/api/scan-card", {
         method: "POST",
