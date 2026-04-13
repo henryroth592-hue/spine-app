@@ -5,7 +5,9 @@ import type { SingleShape, StoneColor, StoneClarity, SingleCartItem } from "@/li
 import type { Shape } from "@/lib/types";
 import { giaCertCost } from "@/lib/certCosts";
 import { getRapPrice, RAP_EXPORTED_AT } from "@/lib/rapLookup";
+import { compressImage } from "@/lib/imageUtils";
 import { Chip } from "./Chip";
+import type { CertScanResult } from "@/app/api/scan-cert/route";
 
 const uid = () => Math.random().toString(36).slice(2);
 const fmt  = (n: number | null | undefined) => n != null ? `$${Math.round(n).toLocaleString()}` : "—";
@@ -16,6 +18,40 @@ const COLORS: StoneColor[]   = ["D","E","F","G","H","I","J","K","L","M","N-"];
 const CLARITIES: StoneClarity[] = ["IF","VVS1","VVS2","VS1","VS2","SI1","SI2","SI3","I1","I2","I3"];
 const LOSS_OPTIONS = [10, 15, 20, 25];
 const CUT_RATES   = [75, 100, 175, 250];
+
+// GIA shape name → our shape code
+function mapGiaShape(giaShape: string): SingleShape {
+  const s = giaShape.toLowerCase();
+  if (s.includes("round"))                          return "BR";
+  if (s.includes("princess"))                       return "PR";
+  if (s.includes("marquise"))                       return "MQ";
+  if (s.includes("oval"))                           return "OV";
+  if (s.includes("radiant"))                        return "RA";
+  if (s.includes("emerald"))                        return "EM";
+  if (s.includes("asscher"))                        return "AS";
+  if (s.includes("old european") || s.includes("old-european")) return "OE";
+  if (s.includes("old mine")     || s.includes("old-mine"))     return "OM";
+  if (s.includes("pear"))                           return "PS";
+  if (s.includes("cushion"))                        return "CU";
+  return "FA";
+}
+
+// GIA color → our StoneColor (N or below → "N-")
+function mapGiaColor(c: string): StoneColor | null {
+  const upper = c.toUpperCase().trim() as StoneColor;
+  const valid: StoneColor[] = ["D","E","F","G","H","I","J","K","L","M","N-"];
+  if (valid.includes(upper)) return upper;
+  // N through Z → "N-"
+  if (c.length === 1 && c >= "N" && c <= "Z") return "N-";
+  return null;
+}
+
+// GIA clarity → our StoneClarity (FL → IF)
+function mapGiaClarity(cl: string): StoneClarity | null {
+  const upper = cl.toUpperCase().trim().replace("FLAWLESS", "IF") as StoneClarity;
+  const valid: StoneClarity[] = ["IF","VVS1","VVS2","VS1","VS2","SI1","SI2","SI3","I1","I2","I3"];
+  return valid.includes(upper) ? upper : null;
+}
 
 // Smart cut rate: >1ct AND J-or-better AND SI2-or-better → $175/ct, else $100/ct
 const GOOD_COLORS = new Set<StoneColor>(["D","E","F","G","H","I","J"]);
@@ -42,6 +78,42 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const [lossCustom,    setLossCustom]    = useState("");
   const [useCustomLoss, setUseCustomLoss] = useState(false);
   const [cutRateOverride, setCutRateOverride] = useState<number | null>(null);
+
+  // GIA cert scan
+  const [certData,     setCertData]     = useState<CertScanResult | null>(null);
+  const [scanningCert, setScanningCert] = useState(false);
+  const [certError,    setCertError]    = useState("");
+
+  async function handleScanCert(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanningCert(true);
+    setCertError("");
+    try {
+      const base64 = await compressImage(file);
+      const res = await fetch("/api/scan-cert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mediaType: "image/jpeg" }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        throw new Error(`Server error ${res.status}: ${raw.slice(0, 200)}`);
+      }
+      const data: CertScanResult = await res.json();
+      if ("error" in data) throw new Error((data as { error: string }).error);
+      setCertData(data);
+      if (data.shape)       setShape(mapGiaShape(data.shape));
+      if (data.caratWeight) setWeight(data.caratWeight);
+      if (data.color)       { const c = mapGiaColor(data.color);   if (c) setColor(c); }
+      if (data.clarity)     { const cl = mapGiaClarity(data.clarity); if (cl) setClarity(cl); }
+    } catch (err) {
+      setCertError(String(err));
+    } finally {
+      setScanningCert(false);
+      e.target.value = "";
+    }
+  }
 
   // Discount inputs — bidirectional
   const [activeDisc,    setActiveDisc]    = useState<ActiveDisc>("asis");
@@ -125,6 +197,26 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
 
       {/* Stone details */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
+
+        {/* GIA cert scan */}
+        <div className="space-y-2">
+          <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-300 rounded-xl py-2.5 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanningCert ? "opacity-50 pointer-events-none" : ""}`}>
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCert} disabled={scanningCert} />
+            {scanningCert ? "Reading cert…" : "📋  Scan GIA Cert"}
+          </label>
+          {certError && <p className="text-xs text-red-500">{certError}</p>}
+          {certData && (
+            <div className="bg-zinc-50 rounded-lg px-3 py-2 text-xs text-zinc-600 space-y-0.5">
+              {certData.reportNumber && <p><span className="font-medium">Report:</span> {certData.reportNumber}</p>}
+              {certData.measurements && <p><span className="font-medium">Measurements:</span> {certData.measurements}</p>}
+              {certData.cut         && <p><span className="font-medium">Cut:</span> {certData.cut}</p>}
+              {certData.polish      && <p><span className="font-medium">Polish:</span> {certData.polish} · <span className="font-medium">Sym:</span> {certData.symmetry}</p>}
+              {certData.fluorescence && <p><span className="font-medium">Fluor:</span> {certData.fluorescence}</p>}
+              <button type="button" onClick={() => setCertData(null)} className="text-zinc-400 underline mt-1">Clear</button>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <label className="label">Shape</label>
           <div className="flex flex-wrap gap-2">

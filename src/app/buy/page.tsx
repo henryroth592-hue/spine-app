@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { compressImage } from "@/lib/imageUtils";
 import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem } from "@/lib/types";
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
@@ -130,29 +131,7 @@ export default function BuyPage() {
     if (!file) return;
     setScanning(true);
     try {
-      // Resize image to max 1200px before encoding — avoids Vercel 4.5MB payload limit
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = reject;
-        reader.onload = () => {
-          const img = new Image();
-          img.onerror = reject;
-          img.onload = () => {
-            const MAX = 1200;
-            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-            const canvas = document.createElement("canvas");
-            canvas.width  = Math.round(img.width  * scale);
-            canvas.height = Math.round(img.height * scale);
-            canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            resolve(dataUrl.split(",")[1]);
-          };
-          img.src = reader.result as string;
-        };
-        reader.readAsDataURL(file);
-      });
-
-      // Always jpeg after canvas resize
+      const base64 = await compressImage(file);
       const mediaType = "image/jpeg";
 
       const res = await fetch("/api/scan-card", {
