@@ -10,8 +10,15 @@ import ReceiptModal from "@/components/ReceiptModal";
 
 type AppTab = "parcels" | "singles" | "metals" | "custom";
 
-const DEFAULT_VENDORS = ["Walk-in", "Estate buyer", "Dealer A", "Dealer B"];
-const STORAGE_KEY = "spine_vendors";
+interface Vendor { name: string; email: string; }
+
+const DEFAULT_VENDORS: Vendor[] = [
+  { name: "Walk-in",      email: "" },
+  { name: "Estate buyer", email: "" },
+  { name: "Dealer A",     email: "" },
+  { name: "Dealer B",     email: "" },
+];
+const STORAGE_KEY = "spine_vendors_v2";
 
 function fmtTotal(n: number) {
   return `$${Math.round(n).toLocaleString()}`;
@@ -58,10 +65,12 @@ export default function BuyPage() {
   const [showReceipt, setShowReceipt] = useState(false);
 
   // ── Vendor management (localStorage) ──────────────────────────────────────
-  const [vendors, setVendors] = useState<string[]>(DEFAULT_VENDORS);
-  const [vendor, setVendor] = useState("Walk-in");
-  const [newVendorInput, setNewVendorInput] = useState("");
+  const [vendors, setVendors] = useState<Vendor[]>(DEFAULT_VENDORS);
+  const [selectedVendor, setSelectedVendor] = useState<string>("Walk-in");
+  const [newName,  setNewName]  = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [managingVendors, setManagingVendors] = useState(false);
+  const [editingEmail, setEditingEmail] = useState<string | null>(null); // vendor name being edited
 
   useEffect(() => {
     try {
@@ -70,25 +79,31 @@ export default function BuyPage() {
     } catch { /* ignore */ }
   }, []);
 
-  function saveVendors(updated: string[]) {
+  function persist(updated: Vendor[]) {
     setVendors(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
   function addVendor() {
-    const name = newVendorInput.trim();
-    if (!name || vendors.includes(name)) return;
-    const updated = [...vendors, name];
-    saveVendors(updated);
-    setVendor(name);
-    setNewVendorInput("");
+    const name = newName.trim();
+    if (!name || vendors.find((v) => v.name === name)) return;
+    const updated = [...vendors, { name, email: newEmail.trim() }];
+    persist(updated);
+    setSelectedVendor(name);
+    setNewName(""); setNewEmail("");
+  }
+
+  function updateEmail(name: string, email: string) {
+    persist(vendors.map((v) => v.name === name ? { ...v, email } : v));
   }
 
   function removeVendor(name: string) {
-    const updated = vendors.filter((v) => v !== name);
-    saveVendors(updated);
-    if (vendor === name) setVendor(updated[0] ?? "");
+    const updated = vendors.filter((v) => v.name !== name);
+    persist(updated);
+    if (selectedVendor === name) setSelectedVendor(updated[0]?.name ?? "");
   }
+
+  const activeVendor = vendors.find((v) => v.name === selectedVendor);
 
   // ── Cart ───────────────────────────────────────────────────────────────────
   const addItem = (item: CartItem) => setCart((prev) => [...prev, item]);
@@ -98,8 +113,8 @@ export default function BuyPage() {
   const tabs: { key: AppTab; label: string }[] = [
     { key: "parcels", label: "Parcels" },
     { key: "singles", label: "Singles" },
-    { key: "metals", label: "Metals" },
-    { key: "custom", label: "Custom" },
+    { key: "metals",  label: "Metals"  },
+    { key: "custom",  label: "Custom"  },
   ];
 
   return (
@@ -108,9 +123,7 @@ export default function BuyPage() {
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 pt-3 pb-0">
-          <div className="flex justify-between items-baseline mb-2">
-            <h1 className="text-lg font-semibold text-zinc-900">Diamond Buy</h1>
-          </div>
+          <h1 className="text-lg font-semibold text-zinc-900 mb-2">Diamond Buy</h1>
           <div className="flex">
             {tabs.map((t) => (
               <button key={t.key} type="button" onClick={() => setTab(t.key)}
@@ -129,44 +142,67 @@ export default function BuyPage() {
         <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
           <div className="flex justify-between items-center">
             <label className="label">Vendor</label>
-            <button type="button" onClick={() => setManagingVendors((v) => !v)}
+            <button type="button" onClick={() => { setManagingVendors((v) => !v); setEditingEmail(null); }}
               className="text-xs text-zinc-400 underline">
               {managingVendors ? "Done" : "Manage"}
             </button>
           </div>
 
           {managingVendors ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {vendors.map((v) => (
-                <div key={v} className="flex items-center justify-between py-1">
-                  <span className="text-sm text-zinc-700">{v}</span>
-                  <button type="button" onClick={() => removeVendor(v)}
-                    className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                <div key={v.name} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-zinc-700">{v.name}</span>
+                    <button type="button" onClick={() => removeVendor(v.name)}
+                      className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                  </div>
+                  {editingEmail === v.name ? (
+                    <div className="flex gap-2">
+                      <input type="email" inputMode="email"
+                        defaultValue={v.email}
+                        onBlur={(e) => { updateEmail(v.name, e.target.value.trim()); setEditingEmail(null); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        autoFocus
+                        className="input flex-1 text-xs" placeholder="email@example.com" />
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setEditingEmail(v.name)}
+                      className="text-xs text-zinc-400 underline">
+                      {v.email ? v.email : "Add email"}
+                    </button>
+                  )}
                 </div>
               ))}
-              <div className="flex gap-2 pt-1">
-                <input type="text" value={newVendorInput}
-                  onChange={(e) => setNewVendorInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addVendor()}
-                  className="input flex-1" placeholder="New vendor name" />
-                <button type="button" onClick={addVendor}
-                  disabled={!newVendorInput.trim()}
-                  className="btn-primary px-4 shrink-0">Add</button>
+
+              {/* Add new vendor */}
+              <div className="pt-2 border-t border-zinc-100 space-y-2">
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+                  className="input w-full" placeholder="Vendor name" />
+                <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                  className="input w-full" placeholder="Email (optional)" />
+                <button type="button" onClick={addVendor} disabled={!newName.trim()}
+                  className="btn-primary w-full">Add Vendor</button>
               </div>
             </div>
           ) : (
-            <select value={vendor} onChange={(e) => setVendor(e.target.value)}
-              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
-              {vendors.map((v) => <option key={v}>{v}</option>)}
-            </select>
+            <div className="space-y-1">
+              <select value={selectedVendor} onChange={(e) => setSelectedVendor(e.target.value)}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
+                {vendors.map((v) => <option key={v.name}>{v.name}</option>)}
+              </select>
+              {activeVendor?.email && (
+                <p className="text-xs text-zinc-400">{activeVendor.email}</p>
+              )}
+            </div>
           )}
         </div>
 
         {/* Active form */}
-        {tab === "parcels" && <ParcelsForm vendor={vendor} onAdd={addItem} />}
-        {tab === "singles" && <SinglesForm vendor={vendor} onAdd={addItem} />}
-        {tab === "metals"  && <MetalsForm  vendor={vendor} onAdd={addItem} />}
-        {tab === "custom"  && <CustomForm  vendor={vendor} onAdd={addItem} />}
+        {tab === "parcels" && <ParcelsForm vendor={selectedVendor} onAdd={addItem} />}
+        {tab === "singles" && <SinglesForm vendor={selectedVendor} onAdd={addItem} />}
+        {tab === "metals"  && <MetalsForm  vendor={selectedVendor} onAdd={addItem} />}
+        {tab === "custom"  && <CustomForm  vendor={selectedVendor} onAdd={addItem} />}
 
         {/* Cart */}
         {cart.length > 0 && (
@@ -217,7 +253,8 @@ export default function BuyPage() {
       {/* Receipt modal */}
       {showReceipt && (
         <ReceiptModal
-          vendor={vendor}
+          vendor={selectedVendor}
+          vendorEmail={activeVendor?.email}
           cart={cart}
           screenTotal={screenTotal}
           onClose={() => setShowReceipt(false)}

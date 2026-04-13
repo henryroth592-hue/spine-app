@@ -6,13 +6,14 @@ import { buildReceiptText, buildReceiptHtml } from "@/lib/receiptUtils";
 
 interface Props {
   vendor: string;
+  vendorEmail?: string;
   cart: CartItem[];
   screenTotal: number;
   onClose: () => void;
 }
 
-export default function ReceiptModal({ vendor, cart, screenTotal, onClose }: Props) {
-  const [email, setEmail]   = useState("");
+export default function ReceiptModal({ vendor, vendorEmail, cart, screenTotal, onClose }: Props) {
+  const [email, setEmail]   = useState(vendorEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errMsg, setErrMsg] = useState("");
 
