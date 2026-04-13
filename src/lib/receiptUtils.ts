@@ -135,7 +135,7 @@ export function buildReceiptHtml(
 ): string {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const rows = simplified ? buildSummary(cart) : cart.map(lineText);
-  const logoUrl = `${appBaseUrl}/rtc-logo.jpg`;
+  const logoUrl = `${appBaseUrl}/rtc-logo.png`;
 
   const rowsHtml = rows.map((row) => `
     <tr>
@@ -146,12 +146,24 @@ export function buildReceiptHtml(
 
   return `<!DOCTYPE html>
 <html>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px;">
-  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
-    <div style="background:#1e2a45;padding:20px 28px;">
-      <img src="${logoUrl}" alt="Rothschild Trading Company" style="height:48px;display:block;margin-bottom:12px;" />
-      <h1 style="margin:0;font-size:18px;font-weight:700;color:#fff;">Purchase Note</h1>
-      <p style="margin:4px 0 0;font-size:13px;color:#9ca3af;">${date}${simplified ? " &nbsp;&#183;&nbsp; Summary" : ""}</p>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+    <!-- Red accent bar -->
+    <div style="height:4px;background:linear-gradient(90deg,#8b1a2b 0%,#c0392b 50%,#8b1a2b 100%);"></div>
+
+    <!-- Header -->
+    <div style="background:#1e2a45;padding:24px 32px 20px;">
+      <img src="${logoUrl}" alt="Rothschild Trading Company" style="height:52px;display:block;" />
+      <div style="height:1px;background:rgba(255,255,255,0.12);margin:18px 0 14px;"></div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Purchase Note</p>
+            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;letter-spacing:0.02em;">${date.toUpperCase()}${simplified ? "&nbsp;&nbsp;&#183;&nbsp;&nbsp;SUMMARY" : ""}</p>
+          </td>
+        </tr>
+      </table>
     </div>
     <div style="padding:20px 28px;">
       <p style="margin:0 0 16px;font-size:15px;color:#374151;"><strong>Vendor:</strong> ${vendor || "-"}</p>
