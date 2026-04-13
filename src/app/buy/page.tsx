@@ -93,6 +93,7 @@ export default function BuyPage() {
     persist(updated);
     setSelectedVendor(name);
     setNewName(""); setNewEmail(""); setNewPhone("");
+    setManagingVendors(false);
   }
 
   async function handleScanCard(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,11 +112,20 @@ export default function BuyPage() {
         reader.readAsDataURL(file);
       });
 
+      // iPhone HEIC → send as jpeg
+      const mediaType = file.type === "image/heic" || file.type === "" ? "image/jpeg" : file.type;
+
       const res = await fetch("/api/scan-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
+        body: JSON.stringify({ imageBase64: base64, mediaType }),
       });
+
+      // Surface the raw response if it isn't JSON
+      if (!res.ok) {
+        const raw = await res.text();
+        throw new Error(`Server error ${res.status}: ${raw.slice(0, 200)}`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       if (data.name || data.company) setNewName(data.company ?? data.name ?? "");
