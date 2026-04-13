@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { SingleShape, StoneColor, StoneClarity, RecutLocation, SingleCartItem } from "@/lib/types";
+import type { SingleShape, StoneColor, StoneClarity, SingleCartItem } from "@/lib/types";
 import type { Shape } from "@/lib/types";
-import { giaCertCost, CUT_COST_USA, CUT_COST_CHINA } from "@/lib/certCosts";
+import { giaCertCost } from "@/lib/certCosts";
 import { getRapPrice, RAP_EXPORTED_AT } from "@/lib/rapLookup";
 import { Chip } from "./Chip";
 
@@ -14,9 +14,10 @@ const fmtP = (n: number | null | undefined) => n != null ? `${n.toFixed(1)}%` : 
 const SHAPES: SingleShape[] = ["BR","PR","MQ","OV","RA","EM","AS","OE","OM","PS","CU","FA"];
 const COLORS: StoneColor[]   = ["D","E","F","G","H","I","J","K","L","M","N-"];
 const CLARITIES: StoneClarity[] = ["IF","VVS1","VVS2","VS1","VS2","SI1","SI2","SI3","I1","I2","I3"];
-const LOSS_OPTIONS = [10, 15, 20];
+const LOSS_OPTIONS = [10, 15, 20, 25];
+const CUT_RATES   = [75, 100, 175, 250];
 
-// Smart cut location: >1ct AND J-or-better AND SI2-or-better → USA
+// Smart cut rate: >1ct AND J-or-better AND SI2-or-better → $175/ct, else $100/ct
 const GOOD_COLORS = new Set<StoneColor>(["D","E","F","G","H","I","J"]);
 const GOOD_CLARITIES = new Set<StoneClarity>(["IF","VVS1","VVS2","VS1","VS2","SI1","SI2"]);
 
@@ -37,8 +38,10 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   // Cost toggles
   const [inclRecut, setInclRecut] = useState(true);
   const [inclCert,  setInclCert]  = useState(true);
-  const [lossPercent, setLossPercent] = useState(10);
-  const [locationOverride, setLocationOverride] = useState<RecutLocation | null>(null);
+  const [lossPercent,   setLossPercent]   = useState(10);
+  const [lossCustom,    setLossCustom]    = useState("");
+  const [useCustomLoss, setUseCustomLoss] = useState(false);
+  const [cutRateOverride, setCutRateOverride] = useState<number | null>(null);
 
   // Discount inputs — bidirectional
   const [activeDisc,    setActiveDisc]    = useState<ActiveDisc>("asis");
@@ -52,14 +55,14 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const lookedUp = wt > 0 ? getRapPrice(rapShape, wt, color, clarity) : null;
   const rap      = useRapOverride ? (parseFloat(rapOverride) || 0) : (lookedUp ?? 0);
 
-  const endWt       = wt > 0 ? parseFloat((wt * (1 - lossPercent / 100)).toFixed(3)) : 0;
+  const effectiveLoss = useCustomLoss ? (parseFloat(lossCustom) || 0) : lossPercent;
+  const endWt       = wt > 0 ? parseFloat((wt * (1 - effectiveLoss / 100)).toFixed(3)) : 0;
   const lookedUpEnd = endWt > 0 ? getRapPrice(rapShape, endWt, color, clarity) : null;
   const endRap      = lookedUpEnd ?? 0;
 
-  // Smart location
-  const smartLocation: RecutLocation = wt > 1.00 && GOOD_COLORS.has(color) && GOOD_CLARITIES.has(clarity) ? "USA" : "China";
-  const location  = locationOverride ?? smartLocation;
-  const cutPerCt  = location === "USA" ? CUT_COST_USA : CUT_COST_CHINA;
+  // Smart cut rate
+  const smartRate = wt > 1.00 && GOOD_COLORS.has(color) && GOOD_CLARITIES.has(clarity) ? 175 : 100;
+  const cutPerCt  = cutRateOverride ?? smartRate;
 
   // Costs
   const certCostAsIs = inclCert ? giaCertCost(wt) : 0;
@@ -105,7 +108,7 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
       asIsPrice: rap > 0 ? rap * wt * (1 + (displayAsIsDisc ?? 0) / 100) : undefined,
       certCost: certCostAsIs,
       asIsNet: displayAsIsNet ?? undefined,
-      recutLocation: location,
+      recutLocation: cutPerCt,
       endWeight: endWt,
       endRapPerCt: endRap,
       cuttingCost: cutCost,
@@ -186,21 +189,28 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
           <>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500">Estimated loss</p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {LOSS_OPTIONS.map((l) => (
-                  <Chip key={l} label={`${l}%`} active={lossPercent === l} onClick={() => setLossPercent(l)} />
+                  <Chip key={l} label={`${l}%`} active={!useCustomLoss && lossPercent === l}
+                    onClick={() => { setLossPercent(l); setUseCustomLoss(false); }} />
                 ))}
+                <Chip label="Custom" active={useCustomLoss} onClick={() => setUseCustomLoss(true)} />
               </div>
+              {useCustomLoss && (
+                <input type="text" inputMode="decimal" value={lossCustom}
+                  onChange={(e) => setLossCustom(e.target.value)}
+                  className="input w-28 mt-1" placeholder="e.g. 12" />
+              )}
               {endWt > 0 && <p className="text-xs text-zinc-400">{wt}ct → {endWt}ct after recut</p>}
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-zinc-500">Cut location</p>
+              <p className="text-xs text-zinc-500">Cut cost</p>
               <div className="flex gap-2 flex-wrap">
-                {(["USA", "China"] as RecutLocation[]).map((loc) => (
-                  <Chip key={loc}
-                    label={`${loc} $${loc === "USA" ? "175" : "100"}/ct${locationOverride == null && loc === smartLocation ? " ·auto" : ""}`}
-                    active={location === loc}
-                    onClick={() => setLocationOverride(loc)} />
+                {CUT_RATES.map((r) => (
+                  <Chip key={r}
+                    label={`$${r}/ct${cutRateOverride == null && r === smartRate ? " ·auto" : ""}`}
+                    active={cutPerCt === r}
+                    onClick={() => setCutRateOverride(r)} />
                 ))}
               </div>
             </div>

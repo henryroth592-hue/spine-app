@@ -10,7 +10,7 @@ export type SingleShape = "BR" | "PR" | "MQ" | "OV" | "RA" | "EM" | "AS" | "OE" 
 export type StoneColor = "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N-";
 export type StoneClarity = "IF" | "VVS1" | "VVS2" | "VS1" | "VS2" | "SI1" | "SI2" | "SI3" | "I1" | "I2" | "I3";
 export type SingleMode = "as-is" | "recut";
-export type RecutLocation = "USA" | "China";
+export type RecutLocation = number; // cut cost $/ct
 
 // ── Metals ────────────────────────────────────────────────────────────────────
 export type MetalCategory = "SG" | "RG";
