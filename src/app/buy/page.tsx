@@ -105,7 +105,7 @@ export default function BuyPage() {
   function addVendor() {
     const name = newName.trim();
     const email = newEmail.trim();
-    if (!name || !email || vendors.find((v) => v.name === name)) return;
+    if (!name || vendors.find((v) => v.name === name)) return;
     const v: Vendor = {
       name,
       email,
@@ -273,7 +273,7 @@ export default function BuyPage() {
                 <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
                   className="input w-full" placeholder="Company / vendor name *" />
                 <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
-                  className="input w-full" placeholder="Email *" />
+                  className="input w-full" placeholder="Email (recommended)" />
                 <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)}
                   className="input w-full" placeholder="Contact name" />
                 <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
@@ -288,7 +288,7 @@ export default function BuyPage() {
                   className="input w-full" placeholder="Website" />
                 <input type="text" value={newSocial} onChange={(e) => setNewSocial(e.target.value)}
                   className="input w-full" placeholder="Social media" />
-                <button type="button" onClick={addVendor} disabled={!newName.trim() || !newEmail.trim()}
+                <button type="button" onClick={addVendor} disabled={!newName.trim()}
                   className="btn-primary w-full">Add Vendor</button>
               </div>
             </div>
