@@ -16,12 +16,21 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+// Encode non-ASCII subject header per RFC 2047
+function encodeSubject(subject: string): string {
+  if (/[^\x00-\x7F]/.test(subject)) {
+    const b64 = Buffer.from(subject, "utf-8").toString("base64");
+    return `=?UTF-8?B?${b64}?=`;
+  }
+  return subject;
+}
+
 function buildRawEmail(from: string, to: string, subject: string, html: string, text: string): string {
   const boundary = "boundary_" + Math.random().toString(36).slice(2);
   const msg = [
     `From: ${from}`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeSubject(subject)}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     ``,
@@ -55,12 +64,12 @@ export async function POST(req: NextRequest) {
   }
 
   const date = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const subject = `Diamond Buy Receipt — ${vendor || "Session"} · ${date}`;
+  // ASCII-safe subject — avoid special chars that cause encoding issues
+  const subject = `Purchase Note - ${vendor || "Session"} - ${date}`;
 
   try {
     const accessToken = await getAccessToken();
 
-    // Get sender's email address
     const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
