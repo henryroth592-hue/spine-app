@@ -10,15 +10,15 @@ import ReceiptModal from "@/components/ReceiptModal";
 
 type AppTab = "parcels" | "singles" | "metals" | "custom";
 
-interface Vendor { name: string; email: string; }
+interface Vendor { name: string; email: string; phone: string; }
 
 const DEFAULT_VENDORS: Vendor[] = [
-  { name: "Walk-in",      email: "" },
-  { name: "Estate buyer", email: "" },
-  { name: "Dealer A",     email: "" },
-  { name: "Dealer B",     email: "" },
+  { name: "Walk-in",      email: "", phone: "" },
+  { name: "Estate buyer", email: "", phone: "" },
+  { name: "Dealer A",     email: "", phone: "" },
+  { name: "Dealer B",     email: "", phone: "" },
 ];
-const STORAGE_KEY = "spine_vendors_v2";
+const STORAGE_KEY = "spine_vendors_v3";
 
 function fmtTotal(n: number) {
   return `$${Math.round(n).toLocaleString()}`;
@@ -69,8 +69,10 @@ export default function BuyPage() {
   const [selectedVendor, setSelectedVendor] = useState<string>("Walk-in");
   const [newName,  setNewName]  = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [managingVendors, setManagingVendors] = useState(false);
-  const [editingEmail, setEditingEmail] = useState<string | null>(null); // vendor name being edited
+  const [editingEmail, setEditingEmail] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     try {
@@ -87,10 +89,35 @@ export default function BuyPage() {
   function addVendor() {
     const name = newName.trim();
     if (!name || vendors.find((v) => v.name === name)) return;
-    const updated = [...vendors, { name, email: newEmail.trim() }];
+    const updated = [...vendors, { name, email: newEmail.trim(), phone: newPhone.trim() }];
     persist(updated);
     setSelectedVendor(name);
-    setNewName(""); setNewEmail("");
+    setNewName(""); setNewEmail(""); setNewPhone("");
+  }
+
+  async function handleScanCard(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanning(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      const res = await fetch("/api/scan-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.name || data.company)  setNewName(data.company ?? data.name ?? "");
+      if (data.email) setNewEmail(data.email);
+      if (data.phone) setNewPhone(data.phone);
+    } catch (err) {
+      alert("Could not read card: " + String(err));
+    } finally {
+      setScanning(false);
+      e.target.value = "";
+    }
   }
 
   function updateEmail(name: string, email: string) {
@@ -151,36 +178,33 @@ export default function BuyPage() {
           {managingVendors ? (
             <div className="space-y-3">
               {vendors.map((v) => (
-                <div key={v.name} className="space-y-1">
+                <div key={v.name} className="space-y-0.5 py-1 border-b border-zinc-100 last:border-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-zinc-700">{v.name}</span>
                     <button type="button" onClick={() => removeVendor(v.name)}
                       className="text-xs text-red-400 hover:text-red-600">Remove</button>
                   </div>
-                  {editingEmail === v.name ? (
-                    <div className="flex gap-2">
-                      <input type="email" inputMode="email"
-                        defaultValue={v.email}
-                        onBlur={(e) => { updateEmail(v.name, e.target.value.trim()); setEditingEmail(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                        autoFocus
-                        className="input flex-1 text-xs" placeholder="email@example.com" />
-                    </div>
-                  ) : (
-                    <button type="button" onClick={() => setEditingEmail(v.name)}
-                      className="text-xs text-zinc-400 underline">
-                      {v.email ? v.email : "Add email"}
-                    </button>
-                  )}
+                  {v.email && <p className="text-xs text-zinc-400">{v.email}</p>}
+                  {v.phone && <p className="text-xs text-zinc-400">{v.phone}</p>}
                 </div>
               ))}
 
               {/* Add new vendor */}
-              <div className="pt-2 border-t border-zinc-100 space-y-2">
+              <div className="pt-3 border-t border-zinc-100 space-y-2">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Add Vendor</p>
+
+                {/* Scan card button */}
+                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-300 rounded-xl py-3 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCard} disabled={scanning} />
+                  {scanning ? "Scanning…" : "📷  Scan Business Card"}
+                </label>
+
                 <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-                  className="input w-full" placeholder="Vendor name" />
+                  className="input w-full" placeholder="Vendor / company name" />
                 <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
-                  className="input w-full" placeholder="Email (optional)" />
+                  className="input w-full" placeholder="Email" />
+                <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
+                  className="input w-full" placeholder="Phone" />
                 <button type="button" onClick={addVendor} disabled={!newName.trim()}
                   className="btn-primary w-full">Add Vendor</button>
               </div>
@@ -191,8 +215,10 @@ export default function BuyPage() {
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
                 {vendors.map((v) => <option key={v.name}>{v.name}</option>)}
               </select>
-              {activeVendor?.email && (
-                <p className="text-xs text-zinc-400">{activeVendor.email}</p>
+              {(activeVendor?.email || activeVendor?.phone) && (
+                <p className="text-xs text-zinc-400">
+                  {[activeVendor.email, activeVendor.phone].filter(Boolean).join(" · ")}
+                </p>
               )}
             </div>
           )}
