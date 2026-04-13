@@ -100,8 +100,17 @@ export default function BuyPage() {
     if (!file) return;
     setScanning(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
+      // Use FileReader — works in all browsers including iOS Safari
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          resolve(dataUrl.split(",")[1]); // strip "data:image/jpeg;base64," prefix
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
       const res = await fetch("/api/scan-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +118,7 @@ export default function BuyPage() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      if (data.name || data.company)  setNewName(data.company ?? data.name ?? "");
+      if (data.name || data.company) setNewName(data.company ?? data.name ?? "");
       if (data.email) setNewEmail(data.email);
       if (data.phone) setNewPhone(data.phone);
     } catch (err) {

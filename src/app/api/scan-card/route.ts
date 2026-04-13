@@ -46,8 +46,10 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const text = response.content[0].type === "text" ? response.content[0].text.trim() : "{}";
-    const result: CardScanResult = JSON.parse(text);
+    const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "{}";
+    // Strip markdown code fences if Claude wrapped the JSON
+    const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const result: CardScanResult = JSON.parse(jsonStr);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Could not parse card data" }, { status: 422 });
