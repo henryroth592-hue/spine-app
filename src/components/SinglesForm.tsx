@@ -7,7 +7,7 @@ import { giaCertCost } from "@/lib/certCosts";
 import { getRapPrice, RAP_EXPORTED_AT } from "@/lib/rapLookup";
 import { compressImage } from "@/lib/imageUtils";
 import { Chip } from "./Chip";
-import type { CertScanResult } from "@/app/api/scan-cert/route";
+import type { GiaLookupResult } from "@/app/api/gia-lookup/route";
 
 const uid = () => Math.random().toString(36).slice(2);
 const fmt  = (n: number | null | undefined) => n != null ? `$${Math.round(n).toLocaleString()}` : "—";
@@ -80,9 +80,34 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
   const [cutRateOverride, setCutRateOverride] = useState<number | null>(null);
 
   // GIA cert scan
-  const [certData,     setCertData]     = useState<CertScanResult | null>(null);
+  const [certData,     setCertData]     = useState<GiaLookupResult | null>(null);
   const [scanningCert, setScanningCert] = useState(false);
+  const [lookingUpCert,setLookingUpCert]= useState(false);
+  const [certInput,    setCertInput]    = useState("");
   const [certError,    setCertError]    = useState("");
+
+  async function handleCertLookup(reportNumber: string) {
+    setLookingUpCert(true);
+    setCertError("");
+    try {
+      const res = await fetch("/api/gia-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportNumber }),
+      });
+      const data: GiaLookupResult & { error?: string } = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? `Error ${res.status}`);
+      setCertData(data);
+      if (data.shape)       setShape(mapGiaShape(data.shape));
+      if (data.caratWeight) setWeight(data.caratWeight);
+      if (data.color)       { const c = mapGiaColor(data.color);   if (c) setColor(c); }
+      if (data.clarity)     { const cl = mapGiaClarity(data.clarity); if (cl) setClarity(cl); }
+    } catch (err) {
+      setCertError(String(err));
+    } finally {
+      setLookingUpCert(false);
+    }
+  }
 
   async function handleScanCert(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -100,17 +125,16 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
         const raw = await res.text();
         throw new Error(`Server error ${res.status}: ${raw.slice(0, 200)}`);
       }
-      const data: CertScanResult = await res.json();
-      if ("error" in data) throw new Error((data as { error: string }).error);
-      setCertData(data);
-      if (data.shape)       setShape(mapGiaShape(data.shape));
-      if (data.caratWeight) setWeight(data.caratWeight);
-      if (data.color)       { const c = mapGiaColor(data.color);   if (c) setColor(c); }
-      if (data.clarity)     { const cl = mapGiaClarity(data.clarity); if (cl) setClarity(cl); }
+      const data: { reportNumber: string | null; error?: string } = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (!data.reportNumber) throw new Error("No cert number found — try manual entry");
+      setCertInput(data.reportNumber);
+      setScanningCert(false);
+      await handleCertLookup(data.reportNumber);
     } catch (err) {
       setCertError(String(err));
-    } finally {
       setScanningCert(false);
+    } finally {
       e.target.value = "";
     }
   }
@@ -200,19 +224,37 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
 
         {/* GIA cert scan */}
         <div className="space-y-2">
-          <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-300 rounded-xl py-2.5 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanningCert ? "opacity-50 pointer-events-none" : ""}`}>
-            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCert} disabled={scanningCert} />
-            {scanningCert ? "Reading cert…" : "📋  Scan GIA Cert"}
-          </label>
+          <div className="flex gap-2">
+            <label className={`flex items-center justify-center gap-2 flex-1 border-2 border-dashed border-zinc-300 rounded-xl py-2.5 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanningCert || lookingUpCert ? "opacity-50 pointer-events-none" : ""}`}>
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCert} disabled={scanningCert || lookingUpCert} />
+              {scanningCert ? "Scanning…" : lookingUpCert ? "Looking up…" : "📋  Scan GIA Cert"}
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text" inputMode="numeric" value={certInput}
+              onChange={(e) => setCertInput(e.target.value)}
+              placeholder="Or enter cert number"
+              className="input flex-1 text-sm"
+            />
+            <button
+              type="button"
+              disabled={!certInput.trim() || lookingUpCert || scanningCert}
+              onClick={() => handleCertLookup(certInput.trim())}
+              className="btn-primary px-4 text-sm shrink-0 disabled:opacity-40">
+              {lookingUpCert ? "…" : "Lookup"}
+            </button>
+          </div>
           {certError && <p className="text-xs text-red-500">{certError}</p>}
           {certData && (
             <div className="bg-zinc-50 rounded-lg px-3 py-2 text-xs text-zinc-600 space-y-0.5">
-              {certData.reportNumber && <p><span className="font-medium">Report:</span> {certData.reportNumber}</p>}
-              {certData.measurements && <p><span className="font-medium">Measurements:</span> {certData.measurements}</p>}
-              {certData.cut         && <p><span className="font-medium">Cut:</span> {certData.cut}</p>}
-              {certData.polish      && <p><span className="font-medium">Polish:</span> {certData.polish} · <span className="font-medium">Sym:</span> {certData.symmetry}</p>}
-              {certData.fluorescence && <p><span className="font-medium">Fluor:</span> {certData.fluorescence}</p>}
-              <button type="button" onClick={() => setCertData(null)} className="text-zinc-400 underline mt-1">Clear</button>
+              {certData.reportNumber  && <p><span className="font-medium">Report:</span> {certData.reportNumber}</p>}
+              {certData.reportDate    && <p><span className="font-medium">Date:</span> {certData.reportDate}</p>}
+              {certData.measurements  && <p><span className="font-medium">Measurements:</span> {certData.measurements}</p>}
+              {certData.cut           && <p><span className="font-medium">Cut:</span> {certData.cut}</p>}
+              {certData.polish        && <p><span className="font-medium">Polish:</span> {certData.polish} · <span className="font-medium">Sym:</span> {certData.symmetry}</p>}
+              {certData.fluorescence  && <p><span className="font-medium">Fluor:</span> {certData.fluorescence}</p>}
+              <button type="button" onClick={() => { setCertData(null); setCertInput(""); }} className="text-zinc-400 underline mt-1">Clear</button>
             </div>
           )}
         </div>
