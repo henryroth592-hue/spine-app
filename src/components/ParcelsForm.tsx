@@ -12,9 +12,9 @@ const AVG_WEIGHT: Record<string, number> = {
   "18-22": 0.20, "23-29": 0.26, "30-39": 0.345, "40-49": 0.445, "50-69": 0.595,
 };
 
-interface Props { vendor: string; onAdd: (item: ParcelCartItem) => void; }
+interface Props { vendor: string; buyer: string; onAdd: (item: ParcelCartItem) => void; }
 
-export default function ParcelsForm({ vendor, onAdd }: Props) {
+export default function ParcelsForm({ vendor, buyer, onAdd }: Props) {
   const [shape, setShape] = useState<Shape>("round");
   const [sizeRange, setSizeRange] = useState<SizeRange>("23-29");
   const [colorBand, setColorBand] = useState<ColorBand>("H-J");
@@ -43,13 +43,13 @@ export default function ParcelsForm({ vendor, onAdd }: Props) {
   const handleAdd = useCallback(() => {
     if (!vendor || effectivePrice === null || lineTotal === null) return;
     onAdd({
-      id: uid(), itemType: "parcel", vendor, shape, sizeRange, colorBand, clarity,
+      id: uid(), itemType: "parcel", vendor, buyer, shape, sizeRange, colorBand, clarity,
       qty, pricingMode: mode, pricePerCt: effectivePrice,
       avgWeight: useActualWeight && actualWeight > 0 ? actualWeight / qty : avgWeight,
       lineTotal,
       discountPct: mode === "discount" ? discountPct : undefined,
     });
-  }, [vendor, shape, sizeRange, colorBand, clarity, qty, mode, discountPct, effectivePrice, avgWeight, useActualWeight, actualWeight, lineTotal, onAdd]);
+  }, [vendor, buyer, shape, sizeRange, colorBand, clarity, qty, mode, discountPct, effectivePrice, avgWeight, useActualWeight, actualWeight, lineTotal, onAdd]);
 
   return (
     <div className="space-y-4">

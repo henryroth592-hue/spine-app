@@ -66,9 +66,9 @@ function blendedPrice(keys: readonly string[], sizeRange: string): number | null
   return Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
 }
 
-interface Props { vendor: string; onAdd: (item: MeleeCartItem) => void; }
+interface Props { vendor: string; buyer: string; onAdd: (item: MeleeCartItem) => void; }
 
-export default function MeleeForm({ vendor, onAdd }: Props) {
+export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   // ── Standard mode state ───────────────────────────────────────────────────
   const [selectedKey,   setSelectedKey]   = useState<string>(ASSORTMENTS[0].key);
   const [sizeRange,     setSizeRange]     = useState<string>(SIZE_RANGES[1]);
@@ -120,7 +120,7 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
     if (sampleMode) {
       if (sampleAvgPc === null || fullParcelWt <= 0 || extrapolated === null) return;
       onAdd({
-        id: uid(), itemType: "melee", vendor,
+        id: uid(), itemType: "melee", vendor, buyer,
         group: "Mix", assortmentKey: "mix_sample",
         assortmentLabel: "Mix (sample graded)",
         sizeRange, pricePerCt: Math.round(sampleAvgPc),
@@ -132,7 +132,7 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
     } else {
       if (effectivePrice === null || weight <= 0 || lineTotal === null) return;
       onAdd({
-        id: uid(), itemType: "melee", vendor,
+        id: uid(), itemType: "melee", vendor, buyer,
         group: assortment.group, assortmentKey: assortment.key,
         assortmentLabel: assortment.label,
         sizeRange, pricePerCt: effectivePrice,

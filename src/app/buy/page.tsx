@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { compressImage } from "@/lib/imageUtils";
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem } from "@/lib/types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem } from "@/lib/types";
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
 import MetalsForm from "@/components/MetalsForm";
 import CustomForm from "@/components/CustomForm";
 import MeleeForm from "@/components/MeleeForm";
+import GemForm from "@/components/GemForm";
 import ReceiptModal from "@/components/ReceiptModal";
 
-type AppTab = "melee" | "parcels" | "singles" | "metals" | "custom";
+type AppTab = "melee" | "parcels" | "singles" | "metals" | "gems" | "custom";
+
+const BUYERS = ["Henry", "Bert", "Ted", "Emma", "BDL", "DBR"];
 
 interface Vendor {
   name: string;
@@ -37,29 +40,42 @@ function fmtTotal(n: number) {
 }
 
 function cartLabel(item: CartItem): string {
+  const b = (item as { buyer?: string }).buyer ? ` [${(item as { buyer: string }).buyer}]` : "";
   if (item.itemType === "melee") {
     const i = item as MeleeCartItem;
-    return `${i.vendor} · ${i.group} ${i.assortmentLabel} ${i.sizeRange}`;
+    return `${i.vendor}${b} · ${i.group} ${i.assortmentLabel} ${i.sizeRange}`;
   }
   if (item.itemType === "parcel") {
     const i = item as ParcelCartItem;
-    return `${i.vendor} · ${i.shape === "round" ? "Rnd" : "Fcy"} ${i.sizeRange} ${i.colorBand} ${i.clarity} ×${i.qty}`;
+    return `${i.vendor}${b} · ${i.shape === "round" ? "Rnd" : "Fcy"} ${i.sizeRange} ${i.colorBand} ${i.clarity} ×${i.qty}`;
   }
   if (item.itemType === "single") {
     const i = item as SingleCartItem;
-    return `${i.vendor} · ${i.shape} ${i.weight}ct ${i.color} ${i.clarity} [${i.mode}]`;
+    return `${i.vendor}${b} · ${i.shape} ${i.weight}ct ${i.color} ${i.clarity} [${i.mode}]`;
   }
   if (item.itemType === "metal") {
     const i = item as MetalCartItem;
-    return `${i.vendor} · ${i.category} ${i.karat} ${i.grams}g @ ${i.pctOfSpot}% (spot $${i.spotPerOz.toFixed(0)}/oz)`;
+    return `${i.vendor}${b} · ${i.category} ${i.karat} ${i.grams}g @ ${i.pctOfSpot}% (spot $${i.spotPerOz.toFixed(0)}/oz)`;
+  }
+  if (item.itemType === "gem-parcel") {
+    const i = item as GemParcelCartItem;
+    return `${i.vendor}${b} · Gem Parcel – ${i.gemType} ${i.weight}ct`;
+  }
+  if (item.itemType === "single-gem") {
+    const i = item as SingleGemCartItem;
+    return `${i.vendor}${b} · Single Gem – ${i.gemType} ${i.weight}ct`;
   }
   const i = item as CustomCartItem;
-  return `${i.vendor} · ${i.description}`;
+  return `${i.vendor}${b} · ${i.description}`;
 }
 
 function cartDetail(item: CartItem): string {
   if (item.itemType === "melee") {
     const i = item as MeleeCartItem;
+    return `$${i.pricePerCt}/ct × ${i.weight}ct`;
+  }
+  if (item.itemType === "gem-parcel" || item.itemType === "single-gem") {
+    const i = item as GemParcelCartItem;
     return `$${i.pricePerCt}/ct × ${i.weight}ct`;
   }
   if (item.itemType === "parcel") {
@@ -80,7 +96,8 @@ function cartDetail(item: CartItem): string {
 }
 
 export default function BuyPage() {
-  const [tab, setTab] = useState<AppTab>("melee");
+  const [tab,           setTab]           = useState<AppTab>("melee");
+  const [selectedBuyer, setSelectedBuyer] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -196,6 +213,7 @@ export default function BuyPage() {
     { key: "parcels", label: "Mediums" },
     { key: "singles", label: "Singles" },
     { key: "metals",  label: "Metals"  },
+    { key: "gems",    label: "Gems"    },
     { key: "custom",  label: "Custom"  },
   ];
 
@@ -296,12 +314,33 @@ export default function BuyPage() {
           )}
         </div>
 
+        {/* Buyer */}
+        <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2">
+          <label className="label">Buyer <span className="text-red-400">*</span></label>
+          <div className="flex flex-wrap gap-2">
+            {BUYERS.map((b) => (
+              <button key={b} type="button"
+                onClick={() => setSelectedBuyer(b)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
+                  ${selectedBuyer === b
+                    ? "bg-zinc-900 text-white border-zinc-900"
+                    : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
+                {b}
+              </button>
+            ))}
+          </div>
+          {!selectedBuyer && (
+            <p className="text-xs text-amber-600">Select a buyer to enable adding to cart</p>
+          )}
+        </div>
+
         {/* Active form */}
-        {tab === "melee"   && <MeleeForm   vendor={selectedVendor} onAdd={addItem} />}
-        {tab === "parcels" && <ParcelsForm vendor={selectedVendor} onAdd={addItem} />}
-        {tab === "singles" && <SinglesForm vendor={selectedVendor} onAdd={addItem} />}
-        {tab === "metals"  && <MetalsForm  vendor={selectedVendor} onAdd={addItem} />}
-        {tab === "custom"  && <CustomForm  vendor={selectedVendor} onAdd={addItem} />}
+        {tab === "melee"   && <MeleeForm   vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+        {tab === "parcels" && <ParcelsForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+        {tab === "singles" && <SinglesForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+        {tab === "metals"  && <MetalsForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+        {tab === "gems"    && <GemForm     vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+        {tab === "custom"  && <CustomForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
 
         {/* Cart */}
         {cart.length > 0 && (

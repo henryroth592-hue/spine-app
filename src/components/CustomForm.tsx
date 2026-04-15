@@ -6,11 +6,11 @@ import { Chip } from "./Chip";
 
 const uid = () => Math.random().toString(36).slice(2);
 
-interface Props { vendor: string; onAdd: (item: CustomCartItem) => void; }
+interface Props { vendor: string; buyer: string; onAdd: (item: CustomCartItem) => void; }
 
 type EntryMode = "total" | "per-ct";
 
-export default function CustomForm({ vendor, onAdd }: Props) {
+export default function CustomForm({ vendor, buyer, onAdd }: Props) {
   const [description, setDescription] = useState("");
   const [entryMode, setEntryMode] = useState<EntryMode>("total");
   const [totalInput, setTotalInput] = useState("");
@@ -28,7 +28,7 @@ export default function CustomForm({ vendor, onAdd }: Props) {
 
   function handleAdd() {
     if (!canAdd) return;
-    onAdd({ id: uid(), itemType: "custom", vendor, description: description.trim(), lineTotal });
+    onAdd({ id: uid(), itemType: "custom", vendor, buyer, description: description.trim(), lineTotal });
     setDescription("");
     setTotalInput("");
     setPricePerCtInput("");

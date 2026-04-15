@@ -59,9 +59,9 @@ const GOOD_CLARITIES = new Set<StoneClarity>(["IF","VVS1","VVS2","VS1","VS2","SI
 
 type ActiveDisc = "asis" | "recut";
 
-interface Props { vendor: string; onAdd: (item: SingleCartItem) => void; }
+interface Props { vendor: string; buyer: string; onAdd: (item: SingleCartItem) => void; }
 
-export default function SinglesForm({ vendor, onAdd }: Props) {
+export default function SinglesForm({ vendor, buyer, onAdd }: Props) {
   const [shape,   setShape]   = useState<SingleShape>("BR");
   const [weight,  setWeight]  = useState("1.10");
   const [color,   setColor]   = useState<StoneColor>("H");
@@ -198,7 +198,7 @@ export default function SinglesForm({ vendor, onAdd }: Props) {
     const net = mode === "as-is" ? displayAsIsNet : displayRecutNet;
     if (net == null) return;
     onAdd({
-      id: uid(), itemType: "single", vendor, shape, weight: wt, color, clarity,
+      id: uid(), itemType: "single", vendor, buyer, shape, weight: wt, color, clarity,
       rapPerCt: rap, mode,
       asIsDiscountPct: displayAsIsDisc ?? undefined,
       asIsPrice: rap > 0 ? rap * wt * (1 + (displayAsIsDisc ?? 0) / 100) : undefined,

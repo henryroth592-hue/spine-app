@@ -21,6 +21,7 @@ export interface ParcelCartItem {
   id: string;
   itemType: "parcel";
   vendor: string;
+  buyer: string;
   shape: Shape;
   sizeRange: SizeRange;
   colorBand: ColorBand;
@@ -37,6 +38,7 @@ export interface SingleCartItem {
   id: string;
   itemType: "single";
   vendor: string;
+  buyer: string;
   shape: SingleShape;
   weight: number;
   color: StoneColor;
@@ -64,6 +66,7 @@ export interface MetalCartItem {
   id: string;
   itemType: "metal";
   vendor: string;
+  buyer: string;
   category: MetalCategory;
   karat: Karat;
   grams: number;
@@ -76,6 +79,7 @@ export interface CustomCartItem {
   id: string;
   itemType: "custom";
   vendor: string;
+  buyer: string;
   description: string;
   lineTotal: number;
 }
@@ -84,6 +88,7 @@ export interface MeleeCartItem {
   id: string;
   itemType: "melee";
   vendor: string;
+  buyer: string;
   group: string;
   assortmentKey: string;
   assortmentLabel: string;
@@ -93,7 +98,29 @@ export interface MeleeCartItem {
   lineTotal: number;
 }
 
-export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem | MeleeCartItem;
+export interface GemParcelCartItem {
+  id: string;
+  itemType: "gem-parcel";
+  vendor: string;
+  buyer: string;
+  gemType: string;
+  weight: number;
+  pricePerCt: number;
+  lineTotal: number;
+}
+
+export interface SingleGemCartItem {
+  id: string;
+  itemType: "single-gem";
+  vendor: string;
+  buyer: string;
+  gemType: string;
+  weight: number;
+  pricePerCt: number;
+  lineTotal: number;
+}
+
+export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem | MeleeCartItem | GemParcelCartItem | SingleGemCartItem;
 
 export interface PriceTable {
   round: Record<SizeRange, Record<Clarity, Record<ColorBand, number | null>>>;

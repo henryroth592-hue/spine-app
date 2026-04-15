@@ -14,9 +14,9 @@ const KARAT_PURITY: Record<Karat, number> = {
 };
 const KARATS: Karat[] = ["10k","12k","14k","18k","21k","22k","24k"];
 
-interface Props { vendor: string; onAdd: (item: MetalCartItem) => void; }
+interface Props { vendor: string; buyer: string; onAdd: (item: MetalCartItem) => void; }
 
-export default function MetalsForm({ vendor, onAdd }: Props) {
+export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
   const [category, setCategory] = useState<MetalCategory>("SG");
   const [karat, setKarat] = useState<Karat>("14k");
   const [grams, setGrams] = useState<string>("");
@@ -53,11 +53,11 @@ export default function MetalsForm({ vendor, onAdd }: Props) {
   const handleAdd = useCallback(() => {
     if (!vendor || gramsNum <= 0 || spotPerOz <= 0) return;
     onAdd({
-      id: uid(), itemType: "metal", vendor, category, karat,
+      id: uid(), itemType: "metal", vendor, buyer, category, karat,
       grams: gramsNum, spotPerOz, pctOfSpot: pct,
       lineTotal: Math.round(wePayTotal * 100) / 100,
     });
-  }, [vendor, category, karat, gramsNum, spotPerOz, pct, wePayTotal, onAdd]);
+  }, [vendor, buyer, category, karat, gramsNum, spotPerOz, pct, wePayTotal, onAdd]);
 
   return (
     <div className="space-y-4">
