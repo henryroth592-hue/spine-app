@@ -152,6 +152,22 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
     <div className="space-y-4">
       <p className="text-xs text-zinc-400 text-right">Prices updated {meleeData.updatedAt}</p>
 
+      {/* Mode + Sieve at top */}
+      <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
+        <div className="flex gap-2">
+          <Chip label="Standard"     active={!sampleMode} onClick={() => setSampleMode(false)} />
+          <Chip label="Sample Grade" active={sampleMode}  onClick={() => setSampleMode(true)}  />
+        </div>
+        <div className="space-y-2">
+          <label className="label">Sieve size</label>
+          <div className="flex flex-wrap gap-2">
+            {SIZE_RANGES.map((sr) => (
+              <Chip key={sr} label={sr} active={sizeRange === sr} onClick={() => setSizeRange(sr)} />
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Assortment picker (hidden in sample mode) */}
       {!sampleMode && (
         <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
@@ -171,23 +187,6 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
 
       {/* Pricing card */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
-
-        {/* Mode toggle */}
-        <div className="flex gap-2">
-          <Chip label="Standard"     active={!sampleMode} onClick={() => setSampleMode(false)} />
-          <Chip label="Sample Grade" active={sampleMode}  onClick={() => setSampleMode(true)}  />
-        </div>
-
-        {/* Sieve size (shared) */}
-        <div className="space-y-2">
-          <label className="label">Sieve size</label>
-          <div className="flex flex-wrap gap-2">
-            {SIZE_RANGES.map((sr) => (
-              <Chip key={sr} label={sr} active={sizeRange === sr} onClick={() => setSizeRange(sr)} />
-            ))}
-          </div>
-        </div>
-
         {/* ── Standard mode ── */}
         {!sampleMode && (
           <>

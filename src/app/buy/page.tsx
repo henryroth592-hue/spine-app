@@ -96,6 +96,7 @@ function cartDetail(item: CartItem): string {
 }
 
 export default function BuyPage() {
+  const [step,          setStep]          = useState<1 | 2>(1);
   const [tab,           setTab]           = useState<AppTab>("melee");
   const [selectedBuyer, setSelectedBuyer] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -217,176 +218,217 @@ export default function BuyPage() {
     { key: "custom",  label: "Custom"  },
   ];
 
+  const canProceed = selectedBuyer !== "";
+
   return (
     <div className="min-h-screen bg-zinc-50 pb-28">
 
-      {/* Header */}
-      <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 pt-3 pb-0">
-          <h1 className="text-lg font-semibold text-zinc-900 mb-2">Diamond Buy</h1>
-          <div className="flex">
-            {tabs.map((t) => (
-              <button key={t.key} type="button" onClick={() => setTab(t.key)}
-                className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors
-                  ${tab === t.key ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
-
-        {/* Vendor */}
-        <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="label">Vendor</label>
-            <button type="button" onClick={() => { setManagingVendors((v) => !v); setEditingEmail(null); }}
-              className="text-xs text-zinc-400 underline">
-              {managingVendors ? "Done" : "Manage"}
-            </button>
-          </div>
-
-          {managingVendors ? (
-            <div className="space-y-3">
-              {vendors.map((v) => (
-                <div key={v.name} className="space-y-0.5 py-1 border-b border-zinc-100 last:border-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-zinc-700">{v.name}</span>
-                    <button type="button" onClick={() => removeVendor(v.name)}
-                      className="text-xs text-red-400 hover:text-red-600">Remove</button>
-                  </div>
-                  {v.contactName && <p className="text-xs text-zinc-500">{v.contactName}{v.title ? ` · ${v.title}` : ""}</p>}
-                  {v.email   && <p className="text-xs text-zinc-400">{v.email}</p>}
-                  {v.cell    && <p className="text-xs text-zinc-400">Cell: {v.cell}</p>}
-                  {v.phone   && <p className="text-xs text-zinc-400">Tel: {v.phone}</p>}
-                  {v.address && <p className="text-xs text-zinc-400">{v.address}</p>}
-                  {v.website && <p className="text-xs text-zinc-400">{v.website}</p>}
-                  {v.social  && <p className="text-xs text-zinc-400">{v.social}</p>}
-                </div>
-              ))}
-
-              {/* Add new vendor */}
-              <div className="pt-3 border-t border-zinc-100 space-y-2">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Add Vendor</p>
-
-                {/* Scan card button */}
-                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-300 rounded-xl py-3 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCard} disabled={scanning} />
-                  {scanning ? "Scanning…" : "📷  Scan Business Card"}
-                </label>
-
-                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-                  className="input w-full" placeholder="Company / vendor name *" />
-                <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
-                  className="input w-full" placeholder="Email (recommended)" />
-                <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)}
-                  className="input w-full" placeholder="Contact name" />
-                <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
-                  className="input w-full" placeholder="Title" />
-                <input type="tel" inputMode="tel" value={newCell} onChange={(e) => setNewCell(e.target.value)}
-                  className="input w-full" placeholder="Cell" />
-                <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
-                  className="input w-full" placeholder="Office phone" />
-                <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)}
-                  className="input w-full" placeholder="Address" />
-                <input type="url" inputMode="url" value={newWebsite} onChange={(e) => setNewWebsite(e.target.value)}
-                  className="input w-full" placeholder="Website" />
-                <input type="text" value={newSocial} onChange={(e) => setNewSocial(e.target.value)}
-                  className="input w-full" placeholder="Social media" />
-                <button type="button" onClick={addVendor} disabled={!newName.trim()}
-                  className="btn-primary w-full">Add Vendor</button>
-              </div>
+      {/* ── STEP 1: Vendor + Buyer ── */}
+      {step === 1 && (
+        <>
+          <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+            <div className="max-w-lg mx-auto px-4 py-3">
+              <h1 className="text-lg font-semibold text-zinc-900">Diamond Buy</h1>
+              <p className="text-xs text-zinc-400">Step 1 of 2 — Vendor & Buyer</p>
             </div>
-          ) : (
-            <div className="space-y-1">
-              <select value={selectedVendor} onChange={(e) => setSelectedVendor(e.target.value)}
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
-                {vendors.map((v) => <option key={v.name}>{v.name}</option>)}
-              </select>
-              {(activeVendor?.email || activeVendor?.cell || activeVendor?.phone) && (
-                <p className="text-xs text-zinc-400">
-                  {[activeVendor.email, activeVendor.cell ?? activeVendor.phone].filter(Boolean).join(" · ")}
-                </p>
+          </div>
+
+          <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+
+            {/* Vendor */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="label">Vendor</label>
+                <button type="button" onClick={() => { setManagingVendors((v) => !v); setEditingEmail(null); }}
+                  className="text-xs text-zinc-400 underline">
+                  {managingVendors ? "Done" : "Manage"}
+                </button>
+              </div>
+
+              {managingVendors ? (
+                <div className="space-y-3">
+                  {vendors.map((v) => (
+                    <div key={v.name} className="space-y-0.5 py-1 border-b border-zinc-100 last:border-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-zinc-700">{v.name}</span>
+                        <button type="button" onClick={() => removeVendor(v.name)}
+                          className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                      </div>
+                      {v.contactName && <p className="text-xs text-zinc-500">{v.contactName}{v.title ? ` · ${v.title}` : ""}</p>}
+                      {v.email   && <p className="text-xs text-zinc-400">{v.email}</p>}
+                      {v.cell    && <p className="text-xs text-zinc-400">Cell: {v.cell}</p>}
+                      {v.phone   && <p className="text-xs text-zinc-400">Tel: {v.phone}</p>}
+                      {v.address && <p className="text-xs text-zinc-400">{v.address}</p>}
+                      {v.website && <p className="text-xs text-zinc-400">{v.website}</p>}
+                      {v.social  && <p className="text-xs text-zinc-400">{v.social}</p>}
+                    </div>
+                  ))}
+                  <div className="pt-3 border-t border-zinc-100 space-y-2">
+                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Add Vendor</p>
+                    <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-zinc-300 rounded-xl py-3 text-sm text-zinc-500 cursor-pointer hover:border-zinc-400 transition-colors ${scanning ? "opacity-50 pointer-events-none" : ""}`}>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanCard} disabled={scanning} />
+                      {scanning ? "Scanning…" : "📷  Scan Business Card"}
+                    </label>
+                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+                      className="input w-full" placeholder="Company / vendor name *" />
+                    <input type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                      className="input w-full" placeholder="Email (recommended)" />
+                    <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)}
+                      className="input w-full" placeholder="Contact name" />
+                    <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+                      className="input w-full" placeholder="Title" />
+                    <input type="tel" inputMode="tel" value={newCell} onChange={(e) => setNewCell(e.target.value)}
+                      className="input w-full" placeholder="Cell" />
+                    <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
+                      className="input w-full" placeholder="Office phone" />
+                    <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)}
+                      className="input w-full" placeholder="Address" />
+                    <input type="url" inputMode="url" value={newWebsite} onChange={(e) => setNewWebsite(e.target.value)}
+                      className="input w-full" placeholder="Website" />
+                    <input type="text" value={newSocial} onChange={(e) => setNewSocial(e.target.value)}
+                      className="input w-full" placeholder="Social media" />
+                    <button type="button" onClick={addVendor} disabled={!newName.trim()}
+                      className="btn-primary w-full">Add Vendor</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <select value={selectedVendor} onChange={(e) => setSelectedVendor(e.target.value)}
+                    className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm text-zinc-900 bg-white">
+                    {vendors.map((v) => <option key={v.name}>{v.name}</option>)}
+                  </select>
+                  {(activeVendor?.email || activeVendor?.cell || activeVendor?.phone) && (
+                    <p className="text-xs text-zinc-400">
+                      {[activeVendor.email, activeVendor.cell ?? activeVendor.phone].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Buyer */}
-        <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2">
-          <label className="label">Buyer <span className="text-red-400">*</span></label>
-          <div className="flex flex-wrap gap-2">
-            {BUYERS.map((b) => (
-              <button key={b} type="button"
-                onClick={() => setSelectedBuyer(b)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                  ${selectedBuyer === b
-                    ? "bg-zinc-900 text-white border-zinc-900"
-                    : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
-                {b}
+            {/* Buyer */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2">
+              <label className="label">Buyer</label>
+              <div className="flex flex-wrap gap-2">
+                {BUYERS.map((b) => (
+                  <button key={b} type="button"
+                    onClick={() => setSelectedBuyer(b)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
+                      ${selectedBuyer === b
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Step 1 footer */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
+            <div className="max-w-lg mx-auto">
+              <button type="button"
+                disabled={!canProceed}
+                onClick={() => setStep(2)}
+                className="btn-primary w-full disabled:opacity-40">
+                Continue →
               </button>
-            ))}
-          </div>
-          {!selectedBuyer && (
-            <p className="text-xs text-amber-600">Select a buyer to enable adding to cart</p>
-          )}
-        </div>
-
-        {/* Active form */}
-        {tab === "melee"   && <MeleeForm   vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-        {tab === "parcels" && <ParcelsForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-        {tab === "singles" && <SinglesForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-        {tab === "metals"  && <MetalsForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-        {tab === "gems"    && <GemForm     vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-        {tab === "custom"  && <CustomForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
-
-        {/* Cart */}
-        {cart.length > 0 && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="label">Cart ({cart.length})</label>
-              <button type="button" onClick={() => setShowReceipt(true)}
-                className="text-xs text-zinc-500 underline">Receipt</button>
+              {!canProceed && <p className="text-xs text-center text-zinc-400 mt-2">Select a buyer to continue</p>}
             </div>
-            <div className="space-y-2">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
-                    <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-2 shrink-0">
-                    <p className="font-semibold text-zinc-900">{fmtTotal(item.lineTotal)}</p>
-                    <button type="button" onClick={() => removeItem(item.id)}
-                      className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
-                  </div>
+          </div>
+        </>
+      )}
+
+      {/* ── STEP 2: Add items ── */}
+      {step === 2 && (
+        <>
+          {/* Header with tabs */}
+          <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+            <div className="max-w-lg mx-auto px-4 pt-3 pb-0">
+              {/* Vendor/buyer bar */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-zinc-700 font-medium">
+                  {selectedVendor}
+                  <span className="text-zinc-400 mx-1.5">·</span>
+                  <span className="text-zinc-500">{selectedBuyer}</span>
                 </div>
-              ))}
+                <button type="button"
+                  onClick={() => { if (cart.length === 0) setStep(1); }}
+                  className={`text-xs underline ${cart.length === 0 ? "text-zinc-400" : "text-zinc-300 cursor-not-allowed"}`}>
+                  {cart.length === 0 ? "Edit" : "Locked"}
+                </button>
+              </div>
+              {/* Tabs */}
+              <div className="flex">
+                {tabs.map((t) => (
+                  <button key={t.key} type="button" onClick={() => setTab(t.key)}
+                    className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors
+                      ${tab === t.key ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-400"}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Sticky total */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
-        <div className="max-w-lg mx-auto flex justify-between items-center">
-          <div>
-            <p className="text-xs text-zinc-400 uppercase tracking-wide">Screen Total</p>
-            <p className="text-2xl font-bold text-zinc-900">{screenTotal > 0 ? fmtTotal(screenTotal) : "—"}</p>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+
+            {/* Active form */}
+            {tab === "melee"   && <MeleeForm   vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+            {tab === "parcels" && <ParcelsForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+            {tab === "singles" && <SinglesForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+            {tab === "metals"  && <MetalsForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+            {tab === "gems"    && <GemForm     vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+            {tab === "custom"  && <CustomForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+
+            {/* Cart */}
             {cart.length > 0 && (
-              <button type="button" onClick={() => setShowReceipt(true)}
-                className="btn-primary px-4">Receipt</button>
-            )}
-            {cart.length > 0 && (
-              <button type="button" onClick={() => setCart([])} className="text-sm text-zinc-400 underline">Clear</button>
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="label">Cart ({cart.length})</label>
+                  <button type="button" onClick={() => setShowReceipt(true)}
+                    className="text-xs text-zinc-500 underline">Receipt</button>
+                </div>
+                <div className="space-y-2">
+                  {cart.map((item) => (
+                    <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
+                        <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
+                      </div>
+                      <div className="flex items-center gap-3 ml-2 shrink-0">
+                        <p className="font-semibold text-zinc-900">{fmtTotal(item.lineTotal)}</p>
+                        <button type="button" onClick={() => removeItem(item.id)}
+                          className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      </div>
+
+          {/* Step 2 sticky footer */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
+            <div className="max-w-lg mx-auto flex justify-between items-center">
+              <div>
+                <p className="text-xs text-zinc-400 uppercase tracking-wide">Total</p>
+                <p className="text-2xl font-bold text-zinc-900">{screenTotal > 0 ? fmtTotal(screenTotal) : "—"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {cart.length > 0 && (
+                  <button type="button" onClick={() => setShowReceipt(true)}
+                    className="btn-primary px-4">Receipt</button>
+                )}
+                {cart.length > 0 && (
+                  <button type="button" onClick={() => { setCart([]); setStep(1); setSelectedBuyer(""); }}
+                    className="text-sm text-zinc-400 underline">New</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Receipt modal */}
       {showReceipt && (
