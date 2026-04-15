@@ -77,9 +77,12 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
   const [totalOverride, setTotalOverride] = useState("");
 
   // ── Sample grader state ───────────────────────────────────────────────────
-  const [sampleMode,    setSampleMode]    = useState(false);
-  const [parcelWeight,  setParcelWeight]  = useState("");
-  const [sampleWeights, setSampleWeights] = useState<Record<SampleKey, string>>({
+  const [sampleMode,          setSampleMode]          = useState(false);
+  const [parcelWeight,        setParcelWeight]        = useState("");
+  const [sampleWeights,       setSampleWeights]       = useState<Record<SampleKey, string>>({
+    cream: "", mid: "", low: "", junk: "",
+  });
+  const [samplePriceOverrides, setSamplePriceOverrides] = useState<Record<SampleKey, string>>({
     cream: "", mid: "", low: "", junk: "",
   });
 
@@ -97,10 +100,12 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
   const fullParcelWt = parseFloat(parcelWeight) || 0;
 
   const sampleCalc = SAMPLE_GROUPS.map((g) => {
-    const bp  = blendedPrice(g.keys, sizeRange);
+    const bp       = blendedPrice(g.keys, sizeRange);
+    const override = samplePriceOverrides[g.key];
+    const effectiveBp = override !== "" ? (parseFloat(override) || null) : bp;
     const wt  = parseFloat(sampleWeights[g.key]) || 0;
-    const val = bp !== null && wt > 0 ? bp * wt : 0;
-    return { ...g, blendedPrice: bp, wt, val };
+    const val = effectiveBp !== null && wt > 0 ? effectiveBp * wt : 0;
+    return { ...g, blendedPrice: bp, effectiveBp, wt, val };
   });
 
   const sampleTotalWt  = sampleCalc.reduce((s, g) => s + g.wt, 0);
@@ -123,6 +128,7 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
       });
       setParcelWeight("");
       setSampleWeights({ cream: "", mid: "", low: "", junk: "" });
+      setSamplePriceOverrides({ cream: "", mid: "", low: "", junk: "" });
     } else {
       if (effectivePrice === null || weight <= 0 || lineTotal === null) return;
       onAdd({
@@ -262,14 +268,22 @@ export default function MeleeForm({ vendor, onAdd }: Props) {
                       <span className="text-sm font-medium text-zinc-800">{g.label}</span>
                       <span className="ml-2 text-xs text-zinc-400">{g.desc}</span>
                     </div>
-                    <span className="text-xs text-zinc-500 shrink-0 ml-2">
-                      {g.blendedPrice !== null ? `$${g.blendedPrice}/ct` : "—"}
-                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input type="text" inputMode="decimal" value={sampleWeights[g.key]}
                       onChange={(e) => setSampleWeights((prev) => ({ ...prev, [g.key]: e.target.value }))}
                       className="input flex-1" placeholder="sample wt (ct)" />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-zinc-400">$</span>
+                      <input
+                        type="text" inputMode="decimal"
+                        value={samplePriceOverrides[g.key]}
+                        onChange={(e) => setSamplePriceOverrides((prev) => ({ ...prev, [g.key]: e.target.value }))}
+                        placeholder={g.blendedPrice !== null ? String(g.blendedPrice) : ""}
+                        className="input w-16 text-sm"
+                      />
+                      <span className="text-xs text-zinc-400">/ct</span>
+                    </div>
                     <span className="text-sm font-medium text-zinc-700 w-16 text-right shrink-0">
                       {g.val > 0 ? fmt(g.val) : "—"}
                     </span>
