@@ -193,7 +193,7 @@ export default function BuyPage() {
 
   const tabs: { key: AppTab; label: string }[] = [
     { key: "melee",   label: "Melee"   },
-    { key: "parcels", label: "Parcels" },
+    { key: "parcels", label: "Mediums" },
     { key: "singles", label: "Singles" },
     { key: "metals",  label: "Metals"  },
     { key: "custom",  label: "Custom"  },
