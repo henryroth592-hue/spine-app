@@ -1,4 +1,4 @@
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem } from "./types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem } from "./types";
 
 // ── Per-line detail ───────────────────────────────────────────────────────────
 
@@ -28,6 +28,30 @@ function lineText(item: CartItem): { label: string; detail: string; total: strin
     return {
       label: `${i.category} ${i.karat} ${i.grams}g`,
       detail: `${i.pctOfSpot}% of spot ($${i.spotPerOz.toFixed(0)}/oz)`,
+      total,
+    };
+  }
+  if (item.itemType === "melee") {
+    const i = item as MeleeCartItem;
+    return {
+      label: `Melee – ${i.assortmentLabel} ${i.sizeRange}`,
+      detail: `$${i.pricePerCt}/ct × ${i.weight}ct`,
+      total,
+    };
+  }
+  if (item.itemType === "gem-parcel") {
+    const i = item as GemParcelCartItem;
+    return {
+      label: `Gem Parcel – ${i.gemType} ${i.weight}ct`,
+      detail: `$${i.pricePerCt}/ct`,
+      total,
+    };
+  }
+  if (item.itemType === "single-gem") {
+    const i = item as SingleGemCartItem;
+    return {
+      label: `Single Gem – ${i.gemType} ${i.weight}ct`,
+      detail: `$${i.pricePerCt}/ct`,
       total,
     };
   }
@@ -75,6 +99,30 @@ function buildSummary(cart: CartItem[]): SummaryLine[] {
     lines.push({
       label: `Metals (${metals.length} item${metals.length > 1 ? "s" : ""})`,
       detail: `${totalG.toFixed(2)}g total`,
+      total: `$${Math.round(totalAmt).toLocaleString()}`,
+    });
+  }
+
+  // Melee
+  const melees = cart.filter((i) => i.itemType === "melee") as MeleeCartItem[];
+  if (melees.length) {
+    const totalWt  = melees.reduce((s, i) => s + i.weight, 0);
+    const totalAmt = melees.reduce((s, i) => s + i.lineTotal, 0);
+    lines.push({
+      label: `Melee (${melees.length} lot${melees.length > 1 ? "s" : ""})`,
+      detail: `${totalWt.toFixed(2)} ct total`,
+      total: `$${Math.round(totalAmt).toLocaleString()}`,
+    });
+  }
+
+  // Gems
+  const gems = cart.filter((i) => i.itemType === "gem-parcel" || i.itemType === "single-gem") as (GemParcelCartItem | SingleGemCartItem)[];
+  if (gems.length) {
+    const totalWt  = gems.reduce((s, i) => s + i.weight, 0);
+    const totalAmt = gems.reduce((s, i) => s + i.lineTotal, 0);
+    lines.push({
+      label: `Gems (${gems.length} item${gems.length > 1 ? "s" : ""})`,
+      detail: `${totalWt.toFixed(2)} ct total`,
       total: `$${Math.round(totalAmt).toLocaleString()}`,
     });
   }

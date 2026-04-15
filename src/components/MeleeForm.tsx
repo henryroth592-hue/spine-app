@@ -75,6 +75,7 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const [weightInput,   setWeightInput]   = useState("");
   const [priceOverride, setPriceOverride] = useState("");
   const [totalOverride, setTotalOverride] = useState("");
+  const [mixMode,       setMixMode]       = useState<"MP" | "RP">("MP");
 
   // ── Sample grader state ───────────────────────────────────────────────────
   const [sampleMode,          setSampleMode]          = useState(false);
@@ -88,7 +89,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
 
   // ── Standard mode derived ─────────────────────────────────────────────────
   const assortment     = ASSORTMENTS.find((a) => a.key === selectedKey) ?? ASSORTMENTS[0];
-  const sheetPrice     = assortment.prices[sizeRange] ?? null;
+  const isMixRP        = assortment.group === "Mix" && mixMode === "RP";
+  const sheetPrice     = (!isMixRP && assortment.prices[sizeRange] != null) ? assortment.prices[sizeRange] : null;
   const effectivePrice = priceOverride !== "" ? (parseFloat(priceOverride) || null) : sheetPrice;
   const weight         = parseFloat(weightInput) || 0;
   const calcTotal      = effectivePrice !== null && weight > 0 ? Math.round(effectivePrice * weight) : null;
@@ -131,10 +133,13 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
       setSamplePriceOverrides({ cream: "", mid: "", low: "", junk: "" });
     } else {
       if (effectivePrice === null || weight <= 0 || lineTotal === null) return;
+      const addKey   = isMixRP ? "mix_rp" : assortment.key;
+      const addLabel = isMixRP ? "Mix All Shapes and Qualities (RP)" : assortment.label;
+      const addGroup = assortment.group;
       onAdd({
         id: uid(), itemType: "melee", vendor, buyer,
-        group: assortment.group, assortmentKey: assortment.key,
-        assortmentLabel: assortment.label,
+        group: addGroup, assortmentKey: addKey,
+        assortmentLabel: addLabel,
         sizeRange, pricePerCt: effectivePrice,
         weight, lineTotal,
       });
@@ -171,17 +176,29 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
       {/* Assortment picker (hidden in sample mode) */}
       {!sampleMode && (
         <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
-          {GROUPS.map((group) => (
-            <div key={group} className="space-y-2">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">{group}</p>
-              <div className="flex flex-wrap gap-2">
-                {ASSORTMENTS.filter((a) => a.group === group).map((a) => (
-                  <Chip key={a.key} label={a.label} active={selectedKey === a.key}
-                    onClick={() => setSelectedKey(a.key)} />
-                ))}
+          {GROUPS.map((group) => {
+            const isMixGroup = group === "Mix";
+            return (
+              <div key={group} className="space-y-2">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                  {isMixGroup ? "Mix All Shapes and Qualities" : group}
+                </p>
+                {isMixGroup ? (
+                  <div className="flex gap-2">
+                    <Chip label="MP" active={mixMode === "MP"} onClick={() => { setMixMode("MP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                    <Chip label="RP" active={mixMode === "RP"} onClick={() => { setMixMode("RP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {ASSORTMENTS.filter((a) => a.group === group).map((a) => (
+                      <Chip key={a.key} label={a.label} active={selectedKey === a.key}
+                        onClick={() => setSelectedKey(a.key)} />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -201,7 +218,7 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-xs text-zinc-400">
-                    Per carat{priceOverride !== "" ? " (override)" : " (sheet)"}
+                    Per carat{isMixRP ? " (manual)" : priceOverride !== "" ? " (override)" : " (sheet)"}
                   </p>
                   <p className="text-xl font-bold text-zinc-900">
                     {effectivePrice !== null ? `$${effectivePrice}` : "—"}
@@ -216,14 +233,14 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-zinc-500">$/ct override</label>
+                <label className="text-xs text-zinc-500">{isMixRP ? "$/ct" : "$/ct override"}</label>
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-400 text-sm">$</span>
                   <input type="text" inputMode="decimal" value={priceOverride}
                     onChange={(e) => { setPriceOverride(e.target.value); setTotalOverride(""); }}
                     placeholder={sheetPrice !== null ? String(sheetPrice) : ""}
                     className="input flex-1" />
-                  {priceOverride && (
+                  {priceOverride && !isMixRP && (
                     <button type="button" onClick={() => setPriceOverride("")}
                       className="text-xs text-zinc-400 underline shrink-0">clear</button>
                   )}
