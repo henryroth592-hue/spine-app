@@ -80,7 +80,20 @@ export interface CustomCartItem {
   lineTotal: number;
 }
 
-export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem;
+export interface MeleeCartItem {
+  id: string;
+  itemType: "melee";
+  vendor: string;
+  group: string;
+  assortmentKey: string;
+  assortmentLabel: string;
+  sizeRange: string;
+  pricePerCt: number;
+  weight: number;
+  lineTotal: number;
+}
+
+export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem | MeleeCartItem;
 
 export interface PriceTable {
   round: Record<SizeRange, Record<Clarity, Record<ColorBand, number | null>>>;

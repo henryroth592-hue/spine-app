@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { compressImage } from "@/lib/imageUtils";
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem } from "@/lib/types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem } from "@/lib/types";
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
 import MetalsForm from "@/components/MetalsForm";
 import CustomForm from "@/components/CustomForm";
+import MeleeForm from "@/components/MeleeForm";
 import ReceiptModal from "@/components/ReceiptModal";
 
-type AppTab = "parcels" | "singles" | "metals" | "custom";
+type AppTab = "melee" | "parcels" | "singles" | "metals" | "custom";
 
 interface Vendor {
   name: string;
@@ -36,6 +37,10 @@ function fmtTotal(n: number) {
 }
 
 function cartLabel(item: CartItem): string {
+  if (item.itemType === "melee") {
+    const i = item as MeleeCartItem;
+    return `${i.vendor} · ${i.group} ${i.assortmentLabel} ${i.sizeRange}`;
+  }
   if (item.itemType === "parcel") {
     const i = item as ParcelCartItem;
     return `${i.vendor} · ${i.shape === "round" ? "Rnd" : "Fcy"} ${i.sizeRange} ${i.colorBand} ${i.clarity} ×${i.qty}`;
@@ -53,6 +58,10 @@ function cartLabel(item: CartItem): string {
 }
 
 function cartDetail(item: CartItem): string {
+  if (item.itemType === "melee") {
+    const i = item as MeleeCartItem;
+    return `$${i.pricePerCt}/ct × ${i.weight}ct`;
+  }
   if (item.itemType === "parcel") {
     const i = item as ParcelCartItem;
     return `${i.qty} × $${i.pricePerCt}/ct × ${i.avgWeight}ct avg`;
@@ -71,7 +80,7 @@ function cartDetail(item: CartItem): string {
 }
 
 export default function BuyPage() {
-  const [tab, setTab] = useState<AppTab>("parcels");
+  const [tab, setTab] = useState<AppTab>("melee");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -183,6 +192,7 @@ export default function BuyPage() {
   const screenTotal = cart.reduce((s, i) => s + (i.lineTotal ?? 0), 0);
 
   const tabs: { key: AppTab; label: string }[] = [
+    { key: "melee",   label: "Melee"   },
     { key: "parcels", label: "Parcels" },
     { key: "singles", label: "Singles" },
     { key: "metals",  label: "Metals"  },
@@ -287,6 +297,7 @@ export default function BuyPage() {
         </div>
 
         {/* Active form */}
+        {tab === "melee"   && <MeleeForm   vendor={selectedVendor} onAdd={addItem} />}
         {tab === "parcels" && <ParcelsForm vendor={selectedVendor} onAdd={addItem} />}
         {tab === "singles" && <SinglesForm vendor={selectedVendor} onAdd={addItem} />}
         {tab === "metals"  && <MetalsForm  vendor={selectedVendor} onAdd={addItem} />}
