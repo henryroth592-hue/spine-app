@@ -120,7 +120,18 @@ export interface SingleGemCartItem {
   lineTotal: number;
 }
 
-export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem | MeleeCartItem | GemParcelCartItem | SingleGemCartItem;
+export interface FJCartItem {
+  id: string;
+  itemType: "fj";
+  vendor: string;
+  buyer: string;
+  fjName: string;
+  jewelryType: string;
+  components: CartItem[];
+  lineTotal: number;
+}
+
+export type CartItem = ParcelCartItem | SingleCartItem | MetalCartItem | CustomCartItem | MeleeCartItem | GemParcelCartItem | SingleGemCartItem | FJCartItem;
 
 export interface PriceTable {
   round: Record<SizeRange, Record<Clarity, Record<ColorBand, number | null>>>;

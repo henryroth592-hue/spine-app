@@ -1,4 +1,4 @@
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem } from "./types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem, FJCartItem } from "./types";
 
 // ── Per-line detail ───────────────────────────────────────────────────────────
 
@@ -52,6 +52,14 @@ function lineText(item: CartItem): { label: string; detail: string; total: strin
     return {
       label: `Single Gem – ${i.gemType} ${i.weight}ct`,
       detail: `$${i.pricePerCt}/ct`,
+      total,
+    };
+  }
+  if (item.itemType === "fj") {
+    const i = item as FJCartItem;
+    return {
+      label: `FJ – ${i.fjName} (${i.jewelryType})`,
+      detail: `${i.components.length} component${i.components.length !== 1 ? "s" : ""}`,
       total,
     };
   }
@@ -138,7 +146,47 @@ function buildSummary(cart: CartItem[]): SummaryLine[] {
     });
   }
 
+  // Finished Jewelry
+  const fjs = cart.filter((i) => i.itemType === "fj") as FJCartItem[];
+  if (fjs.length) {
+    const totalAmt = fjs.reduce((s, i) => s + i.lineTotal, 0);
+    const totalComponents = fjs.reduce((s, i) => s + i.components.length, 0);
+    lines.push({
+      label: `Finished Jewelry (${fjs.length} piece${fjs.length !== 1 ? "s" : ""})`,
+      detail: `${totalComponents} component${totalComponents !== 1 ? "s" : ""} total`,
+      total: `$${Math.round(totalAmt).toLocaleString()}`,
+    });
+  }
+
   return lines;
+}
+
+// ── FJ-aware cart expansion ───────────────────────────────────────────────────
+
+type ExpandedRow = { label: string; detail: string; total: string; idx?: number; indent?: boolean };
+
+function expandCart(cart: CartItem[]): ExpandedRow[] {
+  const rows: ExpandedRow[] = [];
+  let idx = 1;
+  for (const item of cart) {
+    if (item.itemType === "fj") {
+      const fj = item as FJCartItem;
+      rows.push({
+        idx,
+        label: `FJ – ${fj.fjName} (${fj.jewelryType})`,
+        detail: `${fj.components.length} component${fj.components.length !== 1 ? "s" : ""}`,
+        total: `$${Math.round(fj.lineTotal).toLocaleString()}`,
+      });
+      fj.components.forEach((c) => {
+        const lt = lineText(c);
+        rows.push({ label: `  → ${lt.label}`, detail: lt.detail, total: lt.total, indent: true });
+      });
+    } else {
+      rows.push({ ...lineText(item), idx });
+    }
+    idx++;
+  }
+  return rows;
 }
 
 // ── Plain text ────────────────────────────────────────────────────────────────
@@ -146,7 +194,7 @@ function buildSummary(cart: CartItem[]): SummaryLine[] {
 export function buildReceiptText(vendor: string, cart: CartItem[], screenTotal: number, simplified = false): string {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const line = "-".repeat(36);
-  const rows = simplified ? buildSummary(cart) : cart.map((item, i) => ({ ...lineText(item), idx: i + 1 }));
+  const rows = simplified ? buildSummary(cart) : expandCart(cart);
 
   const lines = [
     "PURCHASE NOTE",
@@ -157,14 +205,21 @@ export function buildReceiptText(vendor: string, cart: CartItem[], screenTotal: 
     line,
   ];
 
-  rows.forEach((row, i) => {
-    if ("idx" in row) {
+  let summaryIdx = 1;
+  rows.forEach((row) => {
+    if ("indent" in row && row.indent) {
+      lines.push(row.label);
+      if (row.detail) lines.push(`        ${row.detail}`);
+      lines.push(`        ${row.total}`);
+    } else if ("idx" in row && row.idx != null) {
       lines.push(`${row.idx}. ${row.label}`);
+      if (row.detail) lines.push(`   ${row.detail}`);
+      lines.push(`   ${row.total}`);
     } else {
-      lines.push(`${i + 1}. ${row.label}`);
+      lines.push(`${summaryIdx++}. ${row.label}`);
+      if (row.detail) lines.push(`   ${row.detail}`);
+      lines.push(`   ${row.total}`);
     }
-    if (row.detail) lines.push(`   ${row.detail}`);
-    lines.push(`   ${row.total}`);
   });
 
   lines.push(line);
@@ -182,15 +237,18 @@ export function buildReceiptHtml(
   simplified = false,
 ): string {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  const rows = simplified ? buildSummary(cart) : cart.map(lineText);
+  const rows = simplified ? buildSummary(cart) : expandCart(cart);
   const logoUrl = `${appBaseUrl}/rtc-logo.png`;
 
-  const rowsHtml = rows.map((row) => `
+  const rowsHtml = rows.map((row) => {
+    const isIndent = "indent" in row && row.indent;
+    return `
     <tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;">${row.label}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${row.detail}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#111827;">${row.total}</td>
-    </tr>`).join("");
+      <td style="padding:${isIndent ? "4px 12px 4px 28px" : "8px 12px"};border-bottom:1px solid #e5e7eb;color:${isIndent ? "#6b7280" : "#374151"};font-size:${isIndent ? "12px" : "14px"};">${row.label}</td>
+      <td style="padding:${isIndent ? "4px 12px" : "8px 12px"};border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:${isIndent ? "12px" : "13px"};">${row.detail}</td>
+      <td style="padding:${isIndent ? "4px 12px" : "8px 12px"};border-bottom:1px solid #e5e7eb;text-align:right;font-weight:${isIndent ? "400" : "600"};color:${isIndent ? "#6b7280" : "#111827"};font-size:${isIndent ? "12px" : "14px"};">${row.total}</td>
+    </tr>`;
+  }).join("");
 
   return `<!DOCTYPE html>
 <html>

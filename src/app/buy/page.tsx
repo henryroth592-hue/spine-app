@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { compressImage } from "@/lib/imageUtils";
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem } from "@/lib/types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem, FJCartItem } from "@/lib/types";
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
 import MetalsForm from "@/components/MetalsForm";
@@ -14,6 +14,7 @@ import ReceiptModal from "@/components/ReceiptModal";
 type AppTab = "melee" | "parcels" | "singles" | "metals" | "gems" | "custom";
 
 const BUYERS = ["Henry", "Bert", "Ted", "Emma", "BDL", "DBR"];
+const FJ_TYPES = ["Ring", "Necklace", "Bracelet", "Earrings", "Pendant", "Brooch", "Watch", "Other"];
 
 interface Vendor {
   name: string;
@@ -65,6 +66,10 @@ function cartLabel(item: CartItem): string {
     const i = item as SingleGemCartItem;
     return `${i.vendor}${b} · Single Gem – ${i.gemType} ${i.weight}ct`;
   }
+  if (item.itemType === "fj") {
+    const i = item as FJCartItem;
+    return `${i.vendor}${b} · FJ – ${i.fjName} (${i.jewelryType})`;
+  }
   const i = item as CustomCartItem;
   return `${i.vendor}${b} · ${i.description}`;
 }
@@ -92,6 +97,10 @@ function cartDetail(item: CartItem): string {
     const i = item as MetalCartItem;
     return `spot $${i.spotPerOz.toFixed(2)}/oz · ${((i.pctOfSpot / 100) * (parseInt(i.karat) / 24) * 100).toFixed(1)}% pure paid`;
   }
+  if (item.itemType === "fj") {
+    const i = item as FJCartItem;
+    return `${i.components.length} component${i.components.length !== 1 ? "s" : ""}`;
+  }
   return "custom item";
 }
 
@@ -101,6 +110,10 @@ export default function BuyPage() {
   const [selectedBuyer, setSelectedBuyer] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [fjMode,       setFjMode]       = useState(false);
+  const [fjName,       setFjName]       = useState("");
+  const [fjType,       setFjType]       = useState("Ring");
+  const [fjComponents, setFjComponents] = useState<CartItem[]>([]);
 
   // ── Vendor management (localStorage) ──────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>(DEFAULT_VENDORS);
@@ -205,9 +218,34 @@ export default function BuyPage() {
   const activeVendor = vendors.find((v) => v.name === selectedVendor);
 
   // ── Cart ───────────────────────────────────────────────────────────────────
-  const addItem = (item: CartItem) => setCart((prev) => [...prev, item]);
+  const addItem = (item: CartItem) => {
+    if (fjMode) {
+      setFjComponents((prev) => [...prev, item]);
+    } else {
+      setCart((prev) => [...prev, item]);
+    }
+  };
   const removeItem = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const removeComponent = (id: string) => setFjComponents((prev) => prev.filter((i) => i.id !== id));
   const screenTotal = cart.reduce((s, i) => s + (i.lineTotal ?? 0), 0);
+
+  function completeFJ() {
+    if (!fjName.trim() || fjComponents.length === 0) return;
+    const fj: FJCartItem = {
+      id: crypto.randomUUID(),
+      itemType: "fj",
+      vendor: selectedVendor,
+      buyer: selectedBuyer,
+      fjName: fjName.trim(),
+      jewelryType: fjType,
+      components: [...fjComponents],
+      lineTotal: fjComponents.reduce((s, c) => s + c.lineTotal, 0),
+    };
+    setCart((prev) => [...prev, fj]);
+    setFjComponents([]);
+    setFjName("");
+    setFjMode(false);
+  }
 
   const tabs: { key: AppTab; label: string }[] = [
     { key: "melee",   label: "Melee"   },
@@ -358,6 +396,19 @@ export default function BuyPage() {
                   {cart.length === 0 ? "Edit" : "Locked"}
                 </button>
               </div>
+              {/* FJ mode toggle */}
+              <div className="flex gap-1 mb-1 bg-zinc-100 rounded-lg p-0.5">
+                <button type="button" onClick={() => setFjMode(false)}
+                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors
+                    ${!fjMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"}`}>
+                  Items
+                </button>
+                <button type="button" onClick={() => setFjMode(true)}
+                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors
+                    ${fjMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"}`}>
+                  Finished Jewelry
+                </button>
+              </div>
               {/* Tabs */}
               <div className="flex">
                 {tabs.map((t) => (
@@ -373,6 +424,22 @@ export default function BuyPage() {
 
           <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
 
+            {/* FJ name + type */}
+            {fjMode && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Finished Jewelry</p>
+                <div className="flex gap-2">
+                  <input type="text" value={fjName} onChange={(e) => setFjName(e.target.value)}
+                    className="input flex-1" placeholder="Piece name (e.g. 2ct solitaire ring)" />
+                  <select value={fjType} onChange={(e) => setFjType(e.target.value)}
+                    className="border border-zinc-300 rounded-lg px-2 py-2 text-sm text-zinc-900 bg-white">
+                    {FJ_TYPES.map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <p className="text-xs text-amber-700">Use the tabs below to add components</p>
+              </div>
+            )}
+
             {/* Active form */}
             {tab === "melee"   && <MeleeForm   vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
             {tab === "parcels" && <ParcelsForm vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
@@ -380,6 +447,42 @@ export default function BuyPage() {
             {tab === "metals"  && <MetalsForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
             {tab === "gems"    && <GemForm     vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
             {tab === "custom"  && <CustomForm  vendor={selectedVendor} buyer={selectedBuyer} onAdd={addItem} />}
+
+            {/* FJ component staging */}
+            {fjMode && (
+              <div className="bg-white rounded-xl border border-amber-300 p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="label">{fjName.trim() ? `${fjName} – Components` : "Components"}</label>
+                  <span className="text-xs font-semibold text-zinc-600">
+                    {fjComponents.length > 0 ? fmtTotal(fjComponents.reduce((s, i) => s + i.lineTotal, 0)) : "—"}
+                  </span>
+                </div>
+                {fjComponents.length === 0 ? (
+                  <p className="text-sm text-zinc-400">No components added yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {fjComponents.map((item) => (
+                      <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
+                          <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
+                        </div>
+                        <div className="flex items-center gap-3 ml-2 shrink-0">
+                          <p className="font-semibold text-zinc-900">{fmtTotal(item.lineTotal)}</p>
+                          <button type="button" onClick={() => removeComponent(item.id)}
+                            className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={completeFJ}
+                  disabled={!fjName.trim() || fjComponents.length === 0}
+                  className="btn-primary w-full disabled:opacity-40">
+                  Complete FJ →
+                </button>
+              </div>
+            )}
 
             {/* Cart */}
             {cart.length > 0 && (
@@ -390,19 +493,47 @@ export default function BuyPage() {
                     className="text-xs text-zinc-500 underline">Receipt</button>
                 </div>
                 <div className="space-y-2">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
-                        <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
+                  {cart.map((item) => {
+                    if (item.itemType === "fj") {
+                      const fj = item as FJCartItem;
+                      return (
+                        <div key={fj.id} className="py-1 border-b border-zinc-100 last:border-0">
+                          <div className="flex justify-between items-start text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-zinc-800">{fj.fjName}</p>
+                              <p className="text-zinc-400 text-xs">{fj.jewelryType} · {fj.components.length} components</p>
+                            </div>
+                            <div className="flex items-center gap-3 ml-2 shrink-0">
+                              <p className="font-semibold text-zinc-900">{fmtTotal(fj.lineTotal)}</p>
+                              <button type="button" onClick={() => removeItem(fj.id)}
+                                className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
+                            </div>
+                          </div>
+                          <div className="pl-3 mt-1 space-y-0.5">
+                            {fj.components.map((c) => (
+                              <div key={c.id} className="flex justify-between text-xs text-zinc-500">
+                                <span className="truncate">{cartLabel(c)}</span>
+                                <span className="ml-2 shrink-0">{fmtTotal(c.lineTotal)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
+                          <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
+                        </div>
+                        <div className="flex items-center gap-3 ml-2 shrink-0">
+                          <p className="font-semibold text-zinc-900">{fmtTotal(item.lineTotal)}</p>
+                          <button type="button" onClick={() => removeItem(item.id)}
+                            className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 ml-2 shrink-0">
-                        <p className="font-semibold text-zinc-900">{fmtTotal(item.lineTotal)}</p>
-                        <button type="button" onClick={() => removeItem(item.id)}
-                          className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
