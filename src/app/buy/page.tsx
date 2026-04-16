@@ -229,6 +229,26 @@ export default function BuyPage() {
   const removeComponent = (id: string) => setFjComponents((prev) => prev.filter((i) => i.id !== id));
   const screenTotal = cart.reduce((s, i) => s + (i.lineTotal ?? 0), 0);
 
+  const [vendorAsk, setVendorAsk] = useState("");
+  const vendorAskNum = parseFloat(vendorAsk.replace(/[$,]/g, "")) || 0;
+  const askDelta = vendorAskNum > 0 ? vendorAskNum - screenTotal : 0;
+
+  function applyVendorAsk() {
+    if (!vendorAskNum || vendorAskNum === screenTotal || screenTotal === 0) return;
+    const ratio = vendorAskNum / screenTotal;
+    setCart((prev) => prev.map((item): CartItem => {
+      if (item.itemType === "fj") {
+        return {
+          ...item,
+          lineTotal: item.lineTotal * ratio,
+          components: item.components.map((c) => ({ ...c, lineTotal: c.lineTotal * ratio })),
+        };
+      }
+      return { ...item, lineTotal: item.lineTotal * ratio };
+    }));
+    setVendorAsk("");
+  }
+
   function completeFJ() {
     if (!fjName.trim() || fjComponents.length === 0) return;
     const fj: FJCartItem = {
@@ -534,6 +554,31 @@ export default function BuyPage() {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Vendor adjustment */}
+                <div className="pt-2 border-t border-zinc-100 space-y-2">
+                  <p className="text-xs text-zinc-400">Vendor&apos;s ask — leave blank if accepted at calc total</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={vendorAsk}
+                      onChange={(e) => setVendorAsk(e.target.value)}
+                      className="input flex-1"
+                      placeholder={`Calc: ${fmtTotal(screenTotal)}`}
+                    />
+                    <button type="button" onClick={applyVendorAsk}
+                      disabled={!vendorAskNum || vendorAskNum === screenTotal}
+                      className="btn-primary px-4 disabled:opacity-40">
+                      Prorate
+                    </button>
+                  </div>
+                  {vendorAskNum > 0 && vendorAskNum !== screenTotal && (
+                    <p className="text-xs text-zinc-500">
+                      {askDelta > 0 ? "+" : ""}{fmtTotal(askDelta)} distributed across {cart.length} item{cart.length !== 1 ? "s" : ""} proportionally
+                    </p>
+                  )}
                 </div>
               </div>
             )}
