@@ -24,6 +24,8 @@ const GROUPS = ASSORTMENTS.reduce<string[]>((acc, a) => {
   return acc;
 }, []);
 
+const WEIGHT_PRESETS = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00, 3.00, 5.00];
+
 // ── Sample grader group definitions ──────────────────────────────────────────
 const SAMPLE_GROUPS = [
   {
@@ -57,7 +59,6 @@ const SAMPLE_GROUPS = [
 
 type SampleKey = typeof SAMPLE_GROUPS[number]["key"];
 
-/** Average price of a set of assortment keys at a given sieve size */
 function blendedPrice(keys: readonly string[], sizeRange: string): number | null {
   const prices = keys
     .map((k) => ASSORTMENTS.find((a) => a.key === k)?.prices[sizeRange])
@@ -76,6 +77,7 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const [priceOverride, setPriceOverride] = useState("");
   const [totalOverride, setTotalOverride] = useState("");
   const [mixMode,       setMixMode]       = useState<"MP" | "RP">("MP");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // ── Sample grader state ───────────────────────────────────────────────────
   const [sampleMode,          setSampleMode]          = useState(false);
@@ -102,8 +104,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const fullParcelWt = parseFloat(parcelWeight) || 0;
 
   const sampleCalc = SAMPLE_GROUPS.map((g) => {
-    const bp       = blendedPrice(g.keys, sizeRange);
-    const override = samplePriceOverrides[g.key];
+    const bp          = blendedPrice(g.keys, sizeRange);
+    const override    = samplePriceOverrides[g.key];
     const effectiveBp = override !== "" ? (parseFloat(override) || null) : bp;
     const wt  = parseFloat(sampleWeights[g.key]) || 0;
     const val = effectiveBp !== null && wt > 0 ? effectiveBp * wt : 0;
@@ -115,6 +117,14 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const sampleAvgPc    = sampleTotalWt > 0 ? sampleTotalVal / sampleTotalWt : null;
   const extrapolated   = sampleAvgPc !== null && fullParcelWt > 0
     ? Math.round(sampleAvgPc * fullParcelWt) : null;
+
+  function toggleGroup(group: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group); else next.add(group);
+      return next;
+    });
+  }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   function handleAdd() {
@@ -175,25 +185,37 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
 
       {/* Assortment picker (hidden in sample mode) */}
       {!sampleMode && (
-        <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
+        <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
           {GROUPS.map((group) => {
-            const isMixGroup = group === "Mix";
+            const isMixGroup  = group === "Mix";
+            const isCollapsed = collapsedGroups.has(group);
             return (
-              <div key={group} className="space-y-2">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                  {isMixGroup ? "Mix All Shapes and Qualities" : group}
-                </p>
-                {isMixGroup ? (
-                  <div className="flex gap-2">
-                    <Chip label="MP" active={mixMode === "MP"} onClick={() => { setMixMode("MP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
-                    <Chip label="RP" active={mixMode === "RP"} onClick={() => { setMixMode("RP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {ASSORTMENTS.filter((a) => a.group === group).map((a) => (
-                      <Chip key={a.key} label={a.label} active={selectedKey === a.key}
-                        onClick={() => setSelectedKey(a.key)} />
-                    ))}
+              <div key={group}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group)}
+                  className="flex items-center justify-between w-full text-left py-1"
+                >
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                    {isMixGroup ? "Mix All Shapes and Qualities" : group}
+                  </p>
+                  <span className="text-zinc-400 text-sm">{isCollapsed ? "▸" : "▾"}</span>
+                </button>
+                {!isCollapsed && (
+                  <div className="mt-2">
+                    {isMixGroup ? (
+                      <div className="flex gap-2">
+                        <Chip label="MP" active={mixMode === "MP"} onClick={() => { setMixMode("MP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                        <Chip label="RP" active={mixMode === "RP"} onClick={() => { setMixMode("RP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {ASSORTMENTS.filter((a) => a.group === group).map((a) => (
+                          <Chip key={a.key} label={a.label} active={selectedKey === a.key}
+                            onClick={() => setSelectedKey(a.key)} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -207,11 +229,27 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
         {/* ── Standard mode ── */}
         {!sampleMode && (
           <>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <label className="label">Weight (ct)</label>
               <input type="text" inputMode="decimal" value={weightInput}
                 onChange={(e) => setWeightInput(e.target.value)}
                 className="input w-full" placeholder="e.g. 3.50" />
+              {/* Quick weight presets */}
+              <div className="flex flex-wrap gap-1.5">
+                {WEIGHT_PRESETS.map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setWeightInput(String(w))}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors
+                      ${parseFloat(weightInput) === w
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-white text-zinc-500 border-zinc-300 hover:border-zinc-400"}`}
+                  >
+                    {w % 1 === 0 ? `${w}.00` : w.toFixed(2)}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="pt-2 border-t border-zinc-100 space-y-3">

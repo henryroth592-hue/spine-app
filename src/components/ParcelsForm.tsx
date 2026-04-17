@@ -28,6 +28,19 @@ export default function ParcelsForm({ vendor, buyer, onAdd }: Props) {
   const [useActualWeight, setUseActualWeight] = useState(false);
   const [actualWeightInput, setActualWeightInput] = useState("");
 
+  function toggleActualWeight(checked: boolean) {
+    setUseActualWeight(checked);
+    if (checked && !actualWeightInput) {
+      setActualWeightInput((avgWeight * qty).toFixed(2));
+    }
+  }
+
+  function stepWeight(delta: number) {
+    const current = parseFloat(actualWeightInput) || avgWeight * qty;
+    const next = Math.max(0.01, Math.round((current + delta) * 100) / 100);
+    setActualWeightInput(next.toFixed(2));
+  }
+
   // Editable total override
   const [totalOverride, setTotalOverride] = useState("");
 
@@ -94,16 +107,22 @@ export default function ParcelsForm({ vendor, buyer, onAdd }: Props) {
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={useActualWeight} onChange={(e) => { setUseActualWeight(e.target.checked); if (!e.target.checked) setActualWeightInput(""); }} className="rounded" />
+            <input type="checkbox" checked={useActualWeight}
+              onChange={(e) => { if (!e.target.checked) setActualWeightInput(""); toggleActualWeight(e.target.checked); }}
+              className="rounded" />
             Specify actual weight
           </label>
           {useActualWeight && (
             <div className="space-y-1">
               <label className="text-xs text-zinc-500">Total weight (ct)</label>
-              <input type="text" inputMode="decimal" value={actualWeightInput}
-                onChange={(e) => setActualWeightInput(e.target.value)}
-                className="input w-32" placeholder={`${(avgWeight * qty).toFixed(2)}`} />
-              {actualWeight > 0 && <p className="text-xs text-zinc-400">{avgWeight}ct avg × {qty} = {(avgWeight * qty).toFixed(3)}ct expected</p>}
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => stepWeight(-0.01)} className="stepper">−</button>
+                <input type="text" inputMode="decimal" value={actualWeightInput}
+                  onChange={(e) => setActualWeightInput(e.target.value)}
+                  className="input w-24 text-center" />
+                <button type="button" onClick={() => stepWeight(0.01)} className="stepper">+</button>
+              </div>
+              <p className="text-xs text-zinc-400">{avgWeight}ct avg × {qty} = {(avgWeight * qty).toFixed(3)}ct expected</p>
             </div>
           )}
         </div>
