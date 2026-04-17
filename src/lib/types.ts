@@ -13,8 +13,8 @@ export type SingleMode = "as-is" | "recut";
 export type RecutLocation = number; // cut cost $/ct
 
 // ── Metals ────────────────────────────────────────────────────────────────────
-export type MetalCategory = "SG" | "RG";
-export type Karat = "10k" | "12k" | "14k" | "18k" | "21k" | "22k" | "24k";
+export type MetalCategory = "SG" | "RG" | "SS" | "PT";
+export type Karat = "10k" | "12k" | "14k" | "18k" | "21k" | "22k" | "24k" | ".925" | ".900";
 
 // ── Cart items ────────────────────────────────────────────────────────────────
 export interface ParcelCartItem {

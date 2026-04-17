@@ -8,46 +8,74 @@ const uid = () => Math.random().toString(36).slice(2);
 const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const TROY_OZ_PER_GRAM = 1 / 31.1035;
 
+type MetalType = "gold" | "silver" | "platinum";
+
+const METAL_CONFIG: Record<MetalType, {
+  label: string;
+  apiRoute: string;
+  purity: number;
+  karat: Karat;
+  category: MetalCategory;
+  defaultPct: string;
+}> = {
+  gold:     { label: "Gold",     apiRoute: "/api/gold",     purity: 14/24, karat: "14k",  category: "SG", defaultPct: "90" },
+  silver:   { label: "Silver",   apiRoute: "/api/silver",   purity: 0.925, karat: ".925", category: "SS", defaultPct: "90" },
+  platinum: { label: "Platinum", apiRoute: "/api/platinum", purity: 0.90,  karat: ".900", category: "PT", defaultPct: "90" },
+};
+
 const KARAT_PURITY: Record<Karat, number> = {
   "10k": 10/24, "12k": 12/24, "14k": 14/24, "18k": 18/24,
   "21k": 21/24, "22k": 22/24, "24k": 24/24,
+  ".925": 0.925, ".900": 0.90,
 };
-const KARATS: Karat[] = ["10k","12k","14k","18k","21k","22k","24k"];
+const GOLD_KARATS: Karat[] = ["10k","12k","14k","18k","21k","22k","24k"];
 
 interface Props { vendor: string; buyer: string; onAdd: (item: MetalCartItem) => void; }
 
 export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
-  const [category, setCategory] = useState<MetalCategory>("SG");
-  const [karat, setKarat] = useState<Karat>("14k");
-  const [grams, setGrams] = useState<string>("");
+  const [metalType, setMetalType] = useState<MetalType>("gold");
+  const [category,  setCategory]  = useState<MetalCategory>("SG");
+  const [karat,     setKarat]     = useState<Karat>("14k");
+  const [grams,     setGrams]     = useState<string>("");
   const [pctOfSpot, setPctOfSpot] = useState<string>("90");
-  const [pctInput, setPctInput] = useState<string>("90");
+  const [pctInput,  setPctInput]  = useState<string>("90");
 
-  const [liveSpot, setLiveSpot] = useState<number | null>(null);
+  const [liveSpot,   setLiveSpot]   = useState<number | null>(null);
   const [spotStatus, setSpotStatus] = useState<"loading" | "live" | "manual" | "error">("loading");
   const [manualSpot, setManualSpot] = useState<string>("");
-  const [useManual, setUseManual] = useState(false);
+  const [useManual,  setUseManual]  = useState(false);
 
-  // Fetch live gold price
+  // Fetch spot price whenever metal type changes
   useEffect(() => {
-    fetch("/api/gold")
+    setLiveSpot(null);
+    setSpotStatus("loading");
+    setUseManual(false);
+    fetch(METAL_CONFIG[metalType].apiRoute)
       .then((r) => r.json())
       .then((d) => {
         if (d.price) { setLiveSpot(d.price); setSpotStatus("live"); }
         else { setSpotStatus("error"); setUseManual(true); }
       })
       .catch(() => { setSpotStatus("error"); setUseManual(true); });
-  }, []);
+  }, [metalType]);
 
-  const spotPerOz = useManual ? (parseFloat(manualSpot) || 0) : (liveSpot ?? 0);
-  const gramsNum = parseFloat(grams) || 0;
-  const pct = parseFloat(pctOfSpot) || 0;
-  const purity = KARAT_PURITY[karat];
+  // When switching metal type, reset karat/category to defaults
+  function switchMetal(type: MetalType) {
+    setMetalType(type);
+    const cfg = METAL_CONFIG[type];
+    setCategory(cfg.category);
+    setKarat(cfg.karat);
+  }
 
-  // paying = grams × (karat/24) × (spot/troy_oz) × (pct/100)
+  const spotPerOz  = useManual ? (parseFloat(manualSpot) || 0) : (liveSpot ?? 0);
+  const gramsNum   = parseFloat(grams) || 0;
+  const pct        = parseFloat(pctOfSpot) || 0;
+  const purity     = metalType === "gold" ? KARAT_PURITY[karat] : METAL_CONFIG[metalType].purity;
+  const metalLabel = METAL_CONFIG[metalType].label;
+
   const valuePerGram = spotPerOz > 0 ? spotPerOz * TROY_OZ_PER_GRAM * purity : 0;
-  const totalValue = valuePerGram * gramsNum;
-  const wePayTotal = totalValue * (pct / 100);
+  const totalValue   = valuePerGram * gramsNum;
+  const wePayTotal   = totalValue * (pct / 100);
   const wePayPerGram = gramsNum > 0 ? wePayTotal / gramsNum : 0;
 
   const handleAdd = useCallback(() => {
@@ -62,11 +90,21 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
   return (
     <div className="space-y-4">
 
-      {/* Spot price bar */}
+      {/* Metal type selector */}
+      <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2">
+        <label className="label">Metal</label>
+        <div className="flex gap-2">
+          {(["gold", "silver", "platinum"] as MetalType[]).map((t) => (
+            <Chip key={t} label={METAL_CONFIG[t].label} active={metalType === t} onClick={() => switchMetal(t)} />
+          ))}
+        </div>
+      </div>
+
+      {/* Spot price */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2">
         <div className="flex justify-between items-center">
           <div>
-            <p className="label">Gold Spot</p>
+            <p className="label">{metalLabel} Spot</p>
             {spotStatus === "loading" && <p className="text-sm text-zinc-400">Fetching live price…</p>}
             {spotStatus === "live" && !useManual && (
               <p className="text-lg font-bold text-zinc-900">{fmt(liveSpot!)} <span className="text-xs font-normal text-emerald-600">live</span></p>
@@ -90,26 +128,37 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
         )}
         {spotPerOz > 0 && (
           <p className="text-xs text-zinc-400">
-            Pure gold: {fmt(spotPerOz * TROY_OZ_PER_GRAM)}/g
+            Pure {metalLabel.toLowerCase()}: {fmt(spotPerOz * TROY_OZ_PER_GRAM)}/g · purity: {(purity * 100).toFixed(metalType === "gold" ? 2 : 1)}%
           </p>
         )}
       </div>
 
       {/* Metal details */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
-        <div className="space-y-2">
-          <label className="label">Category</label>
-          <div className="flex gap-2">
-            <Chip label="SG (Scrap Gold)" active={category === "SG"} onClick={() => setCategory("SG")} />
-            <Chip label="RG (Removal Gold)" active={category === "RG"} onClick={() => setCategory("RG")} />
+
+        {/* Category — gold only */}
+        {metalType === "gold" && (
+          <div className="space-y-2">
+            <label className="label">Category</label>
+            <div className="flex gap-2">
+              <Chip label="SG (Scrap Gold)"   active={category === "SG"} onClick={() => setCategory("SG")} />
+              <Chip label="RG (Removal Gold)" active={category === "RG"} onClick={() => setCategory("RG")} />
+            </div>
           </div>
-        </div>
-        <div className="space-y-2">
-          <label className="label">Karat</label>
-          <div className="flex flex-wrap gap-2">
-            {KARATS.map((k) => <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />)}
+        )}
+
+        {/* Karat — gold only */}
+        {metalType === "gold" && (
+          <div className="space-y-2">
+            <label className="label">Karat</label>
+            <div className="flex flex-wrap gap-2">
+              {GOLD_KARATS.map((k) => (
+                <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="label">Grams</label>
@@ -133,8 +182,11 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
         <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-2 text-sm">
           <p className="label mb-2">Calculation</p>
           <div className="flex justify-between"><span className="text-zinc-500">Spot</span><span>{fmt(spotPerOz)}/oz</span></div>
-          <div className="flex justify-between"><span className="text-zinc-500">Karat purity</span><span>{(purity * 100).toFixed(2)}% ({karat})</span></div>
-          <div className="flex justify-between"><span className="text-zinc-500">Pure gold value</span><span>{fmt(totalValue)}</span></div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">{metalLabel} purity</span>
+            <span>{(purity * 100).toFixed(metalType === "gold" ? 2 : 1)}% {metalType === "gold" ? `(${karat})` : `(${karat})`}</span>
+          </div>
+          <div className="flex justify-between"><span className="text-zinc-500">Pure {metalLabel.toLowerCase()} value</span><span>{fmt(totalValue)}</span></div>
           <div className="flex justify-between"><span className="text-zinc-500">We pay ({pct}% of spot)</span><span>{fmt(wePayTotal)}</span></div>
           <div className="flex justify-between"><span className="text-zinc-500">Per gram</span><span>{fmt(wePayPerGram)}</span></div>
           <div className="flex justify-between font-semibold border-t border-zinc-200 pt-2 text-lg">

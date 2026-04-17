@@ -95,7 +95,8 @@ function cartDetail(item: CartItem): string {
   }
   if (item.itemType === "metal") {
     const i = item as MetalCartItem;
-    return `spot $${i.spotPerOz.toFixed(2)}/oz · ${((i.pctOfSpot / 100) * (parseInt(i.karat) / 24) * 100).toFixed(1)}% pure paid`;
+    const purity = i.category === "SS" ? 0.925 : i.category === "PT" ? 0.90 : (parseInt(i.karat) / 24);
+    return `spot $${i.spotPerOz.toFixed(2)}/oz · ${((i.pctOfSpot / 100) * purity * 100).toFixed(1)}% pure paid`;
   }
   if (item.itemType === "fj") {
     const i = item as FJCartItem;
