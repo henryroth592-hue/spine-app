@@ -71,13 +71,13 @@ interface Props { vendor: string; buyer: string; onAdd: (item: MeleeCartItem) =>
 
 export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   // ── Standard mode state ───────────────────────────────────────────────────
-  const [selectedKey,   setSelectedKey]   = useState<string>(ASSORTMENTS[0].key);
+  const [selectedKey,   setSelectedKey]   = useState<string>("mix_all");
   const [sizeRange,     setSizeRange]     = useState<string>(SIZE_RANGES[1]);
   const [weightInput,   setWeightInput]   = useState("");
   const [priceOverride, setPriceOverride] = useState("");
   const [totalOverride, setTotalOverride] = useState("");
   const [mixMode,       setMixMode]       = useState<"MP" | "RP">("MP");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(GROUPS));
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(GROUPS.filter((g) => g !== "Mix")));
 
   // ── Sample grader state ───────────────────────────────────────────────────
   const [sampleMode,          setSampleMode]          = useState(false);
