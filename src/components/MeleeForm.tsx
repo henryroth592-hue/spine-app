@@ -77,7 +77,7 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const [priceOverride, setPriceOverride] = useState("");
   const [totalOverride, setTotalOverride] = useState("");
   const [mixMode,       setMixMode]       = useState<"MP" | "RP">("MP");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(GROUPS));
 
   // ── Sample grader state ───────────────────────────────────────────────────
   const [sampleMode,          setSampleMode]          = useState(false);
@@ -205,8 +205,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
                   <div className="mt-2">
                     {isMixGroup ? (
                       <div className="flex gap-2">
-                        <Chip label="MP" active={mixMode === "MP"} onClick={() => { setMixMode("MP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
-                        <Chip label="RP" active={mixMode === "RP"} onClick={() => { setMixMode("RP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                        <Chip label="MP" active={selectedKey === "mix_all" && mixMode === "MP"} onClick={() => { setMixMode("MP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
+                        <Chip label="RP" active={selectedKey === "mix_all" && mixMode === "RP"} onClick={() => { setMixMode("RP"); setSelectedKey("mix_all"); setPriceOverride(""); setTotalOverride(""); }} />
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
