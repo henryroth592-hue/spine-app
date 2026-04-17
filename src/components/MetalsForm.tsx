@@ -13,22 +13,22 @@ type MetalType = "gold" | "silver" | "platinum";
 const METAL_CONFIG: Record<MetalType, {
   label: string;
   apiRoute: string;
-  purity: number;
   karat: Karat;
-  category: MetalCategory;
   defaultPct: string;
 }> = {
-  gold:     { label: "Gold",     apiRoute: "/api/gold",     purity: 14/24, karat: "14k",  category: "SG", defaultPct: "90" },
-  silver:   { label: "Silver",   apiRoute: "/api/silver",   purity: 0.925, karat: ".925", category: "SS", defaultPct: "90" },
-  platinum: { label: "Platinum", apiRoute: "/api/platinum", purity: 0.90,  karat: ".900", category: "PT", defaultPct: "90" },
+  gold:     { label: "Gold",     apiRoute: "/api/gold",     karat: "14k",  defaultPct: "90" },
+  silver:   { label: "Silver",   apiRoute: "/api/silver",   karat: ".925", defaultPct: "90" },
+  platinum: { label: "Platinum", apiRoute: "/api/platinum", karat: ".900", defaultPct: "90" },
 };
 
 const KARAT_PURITY: Record<Karat, number> = {
   "10k": 10/24, "12k": 12/24, "14k": 14/24, "18k": 18/24,
   "21k": 21/24, "22k": 22/24, "24k": 24/24,
-  ".925": 0.925, ".900": 0.90,
+  ".900": 0.900, ".925": 0.925, ".950": 0.950, ".999": 0.999,
 };
-const GOLD_KARATS: Karat[] = ["10k","12k","14k","18k","21k","22k","24k"];
+const GOLD_KARATS:     Karat[] = ["10k","12k","14k","18k","21k","22k","24k"];
+const SILVER_KARATS:   Karat[] = [".925", ".999"];
+const PLATINUM_KARATS: Karat[] = [".900", ".950", ".999"];
 
 interface Props { vendor: string; buyer: string; onAdd: (item: MetalCartItem) => void; }
 
@@ -59,18 +59,16 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
       .catch(() => { setSpotStatus("error"); setUseManual(true); });
   }, [metalType]);
 
-  // When switching metal type, reset karat/category to defaults
+  // When switching metal type, reset karat to default (category stays)
   function switchMetal(type: MetalType) {
     setMetalType(type);
-    const cfg = METAL_CONFIG[type];
-    setCategory(cfg.category);
-    setKarat(cfg.karat);
+    setKarat(METAL_CONFIG[type].karat);
   }
 
   const spotPerOz  = useManual ? (parseFloat(manualSpot) || 0) : (liveSpot ?? 0);
   const gramsNum   = parseFloat(grams) || 0;
   const pct        = parseFloat(pctOfSpot) || 0;
-  const purity     = metalType === "gold" ? KARAT_PURITY[karat] : METAL_CONFIG[metalType].purity;
+  const purity     = KARAT_PURITY[karat];
   const metalLabel = METAL_CONFIG[metalType].label;
 
   const valuePerGram = spotPerOz > 0 ? spotPerOz * TROY_OZ_PER_GRAM * purity : 0;
@@ -136,28 +134,30 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
       {/* Metal details */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
 
-        {/* Category — gold only */}
-        {metalType === "gold" && (
-          <div className="space-y-2">
-            <label className="label">Category</label>
-            <div className="flex gap-2">
-              <Chip label="SG (Scrap Gold)"   active={category === "SG"} onClick={() => setCategory("SG")} />
-              <Chip label="RG (Removal Gold)" active={category === "RG"} onClick={() => setCategory("RG")} />
-            </div>
+        {/* Category — all metals */}
+        <div className="space-y-2">
+          <label className="label">Category</label>
+          <div className="flex gap-2">
+            <Chip label="Scrap"   active={category === "SG"} onClick={() => setCategory("SG")} />
+            <Chip label="Removal" active={category === "RG"} onClick={() => setCategory("RG")} />
           </div>
-        )}
+        </div>
 
-        {/* Karat — gold only */}
-        {metalType === "gold" && (
-          <div className="space-y-2">
-            <label className="label">Karat</label>
-            <div className="flex flex-wrap gap-2">
-              {GOLD_KARATS.map((k) => (
-                <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />
-              ))}
-            </div>
+        {/* Karat / Purity */}
+        <div className="space-y-2">
+          <label className="label">{metalType === "gold" ? "Karat" : "Purity"}</label>
+          <div className="flex flex-wrap gap-2">
+            {metalType === "gold" && GOLD_KARATS.map((k) => (
+              <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />
+            ))}
+            {metalType === "silver" && SILVER_KARATS.map((k) => (
+              <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />
+            ))}
+            {metalType === "platinum" && PLATINUM_KARATS.map((k) => (
+              <Chip key={k} label={k} active={karat === k} onClick={() => setKarat(k)} />
+            ))}
           </div>
-        )}
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
