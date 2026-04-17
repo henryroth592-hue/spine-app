@@ -17,8 +17,8 @@ const METAL_CONFIG: Record<MetalType, {
   defaultPct: string;
 }> = {
   gold:     { label: "Gold",     apiRoute: "/api/gold",     karat: "14k",  defaultPct: "90" },
-  silver:   { label: "Silver",   apiRoute: "/api/silver",   karat: ".925", defaultPct: "90" },
-  platinum: { label: "Platinum", apiRoute: "/api/platinum", karat: ".900", defaultPct: "90" },
+  silver:   { label: "Silver",   apiRoute: "/api/silver",   karat: ".925", defaultPct: "75" },
+  platinum: { label: "Platinum", apiRoute: "/api/platinum", karat: ".900", defaultPct: "85" },
 };
 
 const KARAT_PURITY: Record<Karat, number> = {
@@ -59,10 +59,12 @@ export default function MetalsForm({ vendor, buyer, onAdd }: Props) {
       .catch(() => { setSpotStatus("error"); setUseManual(true); });
   }, [metalType]);
 
-  // When switching metal type, reset karat to default (category stays)
+  // When switching metal type, reset karat and % of spot to defaults (category stays)
   function switchMetal(type: MetalType) {
     setMetalType(type);
     setKarat(METAL_CONFIG[type].karat);
+    setPctOfSpot(METAL_CONFIG[type].defaultPct);
+    setPctInput(METAL_CONFIG[type].defaultPct);
   }
 
   const spotPerOz  = useManual ? (parseFloat(manualSpot) || 0) : (liveSpot ?? 0);
