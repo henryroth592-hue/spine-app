@@ -24,7 +24,8 @@ const GROUPS = ASSORTMENTS.reduce<string[]>((acc, a) => {
   return acc;
 }, []);
 
-const WEIGHT_PRESETS = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00, 3.00, 5.00];
+const WEIGHT_PRESETS   = [0.25, 0.50, 0.75, 1.00, 1.50, 2.00, 3.00, 5.00];
+const DISCOUNT_PRESETS = [20, 25, 30, 35];
 
 // ── Sample grader group definitions ──────────────────────────────────────────
 const SAMPLE_GROUPS = [
@@ -77,6 +78,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const [priceOverride, setPriceOverride] = useState("");
   const [totalOverride, setTotalOverride] = useState("");
   const [mixMode,       setMixMode]       = useState<"MP" | "RP">("MP");
+  const [buyDiscount,   setBuyDiscount]   = useState(25);
+  const [discountInput, setDiscountInput] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(GROUPS.filter((g) => g !== "Mix")));
 
   // ── Sample grader state ───────────────────────────────────────────────────
@@ -93,7 +96,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const assortment     = ASSORTMENTS.find((a) => a.key === selectedKey) ?? ASSORTMENTS[0];
   const isMixRP        = assortment.group === "Mix" && mixMode === "RP";
   const sheetPrice     = (!isMixRP && assortment.prices[sizeRange] != null) ? assortment.prices[sizeRange] : null;
-  const effectivePrice = priceOverride !== "" ? (parseFloat(priceOverride) || null) : sheetPrice;
+  const basePrice      = priceOverride !== "" ? (parseFloat(priceOverride) || null) : sheetPrice;
+  const effectivePrice = basePrice !== null ? Math.round(basePrice * (1 - buyDiscount / 100)) : null;
   const weight         = parseFloat(weightInput) || 0;
   const calcTotal      = effectivePrice !== null && weight > 0 ? Math.round(effectivePrice * weight) : null;
   const lineTotal      = totalOverride !== ""
@@ -106,7 +110,8 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
   const sampleCalc = SAMPLE_GROUPS.map((g) => {
     const bp          = blendedPrice(g.keys, sizeRange);
     const override    = samplePriceOverrides[g.key];
-    const effectiveBp = override !== "" ? (parseFloat(override) || null) : bp;
+    const baseBp      = override !== "" ? (parseFloat(override) || null) : bp;
+    const effectiveBp = baseBp !== null ? Math.round(baseBp * (1 - buyDiscount / 100)) : null;
     const wt  = parseFloat(sampleWeights[g.key]) || 0;
     const val = effectiveBp !== null && wt > 0 ? effectiveBp * wt : 0;
     return { ...g, blendedPrice: bp, effectiveBp, wt, val };
@@ -226,6 +231,33 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
 
       {/* Pricing card */}
       <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
+
+        {/* Buy discount */}
+        <div className="space-y-2">
+          <label className="label">Buy discount</label>
+          <div className="flex flex-wrap gap-2 items-center">
+            <Chip label="Sell" active={buyDiscount === 0} onClick={() => { setBuyDiscount(0); setDiscountInput(""); }} />
+            {DISCOUNT_PRESETS.map((d) => (
+              <Chip key={d} label={`${d}%`} active={buyDiscount === d && discountInput === ""} onClick={() => { setBuyDiscount(d); setDiscountInput(""); }} />
+            ))}
+            <div className="flex items-center gap-1">
+              <input
+                type="text" inputMode="decimal"
+                value={discountInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDiscountInput(val);
+                  const n = parseFloat(val);
+                  if (!isNaN(n) && n >= 0 && n < 100) setBuyDiscount(n);
+                }}
+                placeholder="other %"
+                className="input w-20 text-sm"
+              />
+              {discountInput !== "" && <span className="text-xs text-zinc-400">%</span>}
+            </div>
+          </div>
+        </div>
+
         {/* ── Standard mode ── */}
         {!sampleMode && (
           <>
@@ -256,7 +288,7 @@ export default function MeleeForm({ vendor, buyer, onAdd }: Props) {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-xs text-zinc-400">
-                    Per carat{isMixRP ? " (manual)" : priceOverride !== "" ? " (override)" : " (sheet)"}
+                    Per carat{isMixRP ? " (manual)" : priceOverride !== "" ? " (override)" : buyDiscount === 0 ? " (sell)" : ` (${buyDiscount}% off)`}
                   </p>
                   <p className="text-xl font-bold text-zinc-900">
                     {effectivePrice !== null ? `$${effectivePrice}` : "—"}
