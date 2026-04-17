@@ -81,6 +81,9 @@ export interface CustomCartItem {
   vendor: string;
   buyer: string;
   description: string;
+  customItemType: string;
+  weight?: number;
+  weightUnit?: "ct" | "g";
   lineTotal: number;
 }
 

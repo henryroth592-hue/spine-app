@@ -424,7 +424,11 @@ export default function BuyPage() {
                     ${!fjMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"}`}>
                   Items
                 </button>
-                <button type="button" onClick={() => setFjMode(true)}
+                <button type="button" onClick={() => {
+                  const fjCount = cart.filter((i) => i.itemType === "fj").length;
+                  setFjName(`FJ${fjCount + 1}`);
+                  setFjMode(true);
+                }}
                   className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors
                     ${fjMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"}`}>
                   Finished Jewelry
