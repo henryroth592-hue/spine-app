@@ -366,38 +366,9 @@ export default function SinglesForm({ vendor, buyer, onAdd }: Props) {
         <label className="label mb-3 block">Discount Analysis</label>
         <p className="text-xs text-zinc-400 mb-4">Edit one — the other updates to break even.</p>
 
-        {/* As-Is row */}
-        <div className={`py-3 space-y-1 ${inclRecut ? "border-b border-zinc-100" : ""}`}
-          onClick={() => setActiveDisc("asis")}>
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-            As-Is · {wt}ct
-          </p>
-          {activeDisc === "asis" ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button type="button"
-                onClick={(e) => { e.stopPropagation(); setAsIsDiscInput(String((parseFloat(asIsDiscInput)||0)*-1)); }}
-                className="w-8 h-8 rounded-lg border border-zinc-300 text-sm font-medium flex items-center justify-center shrink-0">±</button>
-              <input type="text" inputMode="decimal" value={asIsDiscInput}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => setAsIsDiscInput(e.target.value)}
-                className="input w-28" />
-              <span className="text-base font-semibold text-zinc-700">{fmt(displayAsIsNet)}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <p className="text-xl font-bold text-zinc-900">{fmtP(displayAsIsDisc)}</p>
-              <p className="text-base font-semibold text-zinc-600">{fmt(displayAsIsNet)}</p>
-              <p className="text-xs text-zinc-400">tap to edit</p>
-            </div>
-          )}
-          {inclCert && certCostAsIs > 0 && (
-            <p className="text-xs text-zinc-400">after ${certCostAsIs} cert</p>
-          )}
-        </div>
-
         {/* Recut row */}
         {inclRecut && (
-          <div className="py-3 space-y-1" onClick={() => setActiveDisc("recut")}>
+          <div className="py-3 space-y-1 border-b border-zinc-100" onClick={() => setActiveDisc("recut")}>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
               Recut · ~{endWt}ct
             </p>
@@ -424,6 +395,34 @@ export default function SinglesForm({ vendor, buyer, onAdd }: Props) {
             )}
           </div>
         )}
+
+        {/* As-Is row */}
+        <div className="py-3 space-y-1" onClick={() => setActiveDisc("asis")}>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+            As-Is · {wt}ct
+          </p>
+          {activeDisc === "asis" ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button type="button"
+                onClick={(e) => { e.stopPropagation(); setAsIsDiscInput(String((parseFloat(asIsDiscInput)||0)*-1)); }}
+                className="w-8 h-8 rounded-lg border border-zinc-300 text-sm font-medium flex items-center justify-center shrink-0">±</button>
+              <input type="text" inputMode="decimal" value={asIsDiscInput}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setAsIsDiscInput(e.target.value)}
+                className="input w-28" />
+              <span className="text-base font-semibold text-zinc-700">{fmt(displayAsIsNet)}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <p className="text-xl font-bold text-zinc-900">{fmtP(displayAsIsDisc)}</p>
+              <p className="text-base font-semibold text-zinc-600">{fmt(displayAsIsNet)}</p>
+              <p className="text-xs text-zinc-400">tap to edit</p>
+            </div>
+          )}
+          {inclCert && certCostAsIs > 0 && (
+            <p className="text-xs text-zinc-400">after ${certCostAsIs} cert</p>
+          )}
+        </div>
 
         <div className="flex gap-2 pt-3 border-t border-zinc-100">
           <button type="button" onClick={() => handleAdd("as-is")}
