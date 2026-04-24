@@ -141,3 +141,18 @@ export interface PriceTable {
   fancy: Record<SizeRange, Record<Clarity, Record<ColorBand, number | null>>>;
   updatedAt: string;
 }
+
+// ── Payment ───────────────────────────────────────────────────────────────────
+export type PaymentMethod = "cash" | "check" | "echeck" | "bank-transfer" | "store-credit";
+
+export interface PaymentRecord {
+  id: string;
+  method: PaymentMethod;
+  account: string;
+  checkNumber?: string;
+  payee: string;
+  date: string;
+  amount: number;
+  description: string;
+  memo: string;
+}

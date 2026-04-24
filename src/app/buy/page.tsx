@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { compressImage } from "@/lib/imageUtils";
-import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem, FJCartItem } from "@/lib/types";
+import type { CartItem, ParcelCartItem, SingleCartItem, MetalCartItem, CustomCartItem, MeleeCartItem, GemParcelCartItem, SingleGemCartItem, FJCartItem, PaymentRecord, PaymentMethod } from "@/lib/types";
 import ParcelsForm from "@/components/ParcelsForm";
 import SinglesForm from "@/components/SinglesForm";
 import MetalsForm from "@/components/MetalsForm";
@@ -14,6 +14,16 @@ import ReceiptModal from "@/components/ReceiptModal";
 type AppTab = "melee" | "parcels" | "singles" | "metals" | "gems" | "custom";
 
 const BUYERS = ["Henry", "Bert", "Ted", "Emma", "BDL", "DBR"];
+const CASH_ACCOUNTS = ["PA Cash", "Esterhuysen Cash"];
+const BANK_ACCOUNTS = ["Dollar Checking 7207"];
+
+const PMT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: "Cash",
+  check: "Check",
+  echeck: "Echeck",
+  "bank-transfer": "Bank Transfer",
+  "store-credit": "Store Credit",
+};
 const FJ_TYPES = ["Ring", "Necklace", "Bracelet", "Earrings", "Pendant", "Brooch", "Watch", "Other"];
 
 interface Vendor {
@@ -106,7 +116,7 @@ function cartDetail(item: CartItem): string {
 }
 
 export default function BuyPage() {
-  const [step,          setStep]          = useState<1 | 2>(1);
+  const [step,          setStep]          = useState<1 | 2 | 3>(1);
   const [tab,           setTab]           = useState<AppTab>("melee");
   const [selectedBuyer, setSelectedBuyer] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -115,6 +125,17 @@ export default function BuyPage() {
   const [fjName,       setFjName]       = useState("");
   const [fjType,       setFjType]       = useState("Ring");
   const [fjComponents, setFjComponents] = useState<CartItem[]>([]);
+
+  // ── Payment ────────────────────────────────────────────────────────────────
+  const [payment,        setPayment]        = useState<PaymentRecord | null>(null);
+  const [pmtMethod,      setPmtMethod]      = useState<PaymentMethod>("cash");
+  const [pmtAccount,     setPmtAccount]     = useState("PA Cash");
+  const [pmtCheckNum,    setPmtCheckNum]    = useState("");
+  const [pmtPayee,       setPmtPayee]       = useState("");
+  const [pmtDate,        setPmtDate]        = useState("");
+  const [pmtAmount,      setPmtAmount]      = useState("");
+  const [pmtDescription, setPmtDescription] = useState("");
+  const [pmtMemo,        setPmtMemo]        = useState("");
 
   // ── Vendor management (localStorage) ──────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>(DEFAULT_VENDORS);
@@ -250,6 +271,50 @@ export default function BuyPage() {
     setVendorAsk("");
   }
 
+  function enterPaymentStep() {
+    setPmtPayee(selectedVendor);
+    setPmtDate(new Date().toISOString().split("T")[0]);
+    setPmtAmount(String(Math.round(screenTotal)));
+    setPmtMethod("cash");
+    setPmtAccount("PA Cash");
+    setPmtCheckNum("");
+    setPmtDescription("");
+    setPmtMemo("");
+    setStep(3);
+  }
+
+  function onMethodChange(m: PaymentMethod) {
+    setPmtMethod(m);
+    if (m === "cash") setPmtAccount("PA Cash");
+    else if (m === "store-credit") setPmtAccount("");
+    else setPmtAccount("Dollar Checking 7207");
+    setPmtCheckNum("");
+  }
+
+  function completePayment() {
+    const record: PaymentRecord = {
+      id: crypto.randomUUID(),
+      method: pmtMethod,
+      account: pmtAccount,
+      ...(pmtMethod === "check" && pmtCheckNum.trim() && { checkNumber: pmtCheckNum.trim() }),
+      payee: pmtPayee,
+      date: pmtDate,
+      amount: parseFloat(pmtAmount) || screenTotal,
+      description: pmtDescription,
+      memo: pmtMemo,
+    };
+    setPayment(record);
+    setShowReceipt(true);
+  }
+
+  function startNew() {
+    setCart([]);
+    setStep(1);
+    setSelectedBuyer("");
+    setShowReceipt(false);
+    setPayment(null);
+  }
+
   function completeFJ() {
     if (!fjName.trim() || fjComponents.length === 0) return;
     const fj: FJCartItem = {
@@ -288,7 +353,7 @@ export default function BuyPage() {
           <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
             <div className="max-w-lg mx-auto px-4 py-3">
               <h1 className="text-lg font-semibold text-zinc-900">Diamond Buy</h1>
-              <p className="text-xs text-zinc-400">Step 1 of 2 — Vendor & Buyer</p>
+              <p className="text-xs text-zinc-400">Step 1 of 3 — Vendor & Buyer</p>
             </div>
           </div>
 
@@ -591,21 +656,167 @@ export default function BuyPage() {
 
           {/* Step 2 sticky footer */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
-            <div className="max-w-lg mx-auto flex justify-between items-center">
-              <div>
-                <p className="text-xs text-zinc-400 uppercase tracking-wide">Total</p>
-                <p className="text-2xl font-bold text-zinc-900">{screenTotal > 0 ? fmtTotal(screenTotal) : "—"}</p>
+            <div className="max-w-lg mx-auto space-y-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide">Total</p>
+                  <p className="text-2xl font-bold text-zinc-900">{screenTotal > 0 ? fmtTotal(screenTotal) : "—"}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {cart.length > 0 && (
+                    <button type="button" onClick={() => setShowReceipt(true)}
+                      className="btn-primary px-4">Receipt</button>
+                  )}
+                  {cart.length > 0 && (
+                    <button type="button" onClick={enterPaymentStep}
+                      className="btn-primary px-4">Payment →</button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                {cart.length > 0 && (
-                  <button type="button" onClick={() => setShowReceipt(true)}
-                    className="btn-primary px-4">Receipt</button>
-                )}
-                {cart.length > 0 && (
-                  <button type="button" onClick={() => { setCart([]); setStep(1); setSelectedBuyer(""); }}
-                    className="text-sm text-zinc-400 underline">New</button>
-                )}
+              {cart.length > 0 && (
+                <button type="button" onClick={startNew}
+                  className="w-full text-center text-xs text-zinc-400 underline">New</button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── STEP 3: Payment ── */}
+      {step === 3 && (
+        <>
+          <div className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+            <div className="max-w-lg mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-lg font-semibold text-zinc-900">Payment</h1>
+                  <p className="text-xs text-zinc-400">Step 3 of 3 — {selectedVendor} · {fmtTotal(screenTotal)}</p>
+                </div>
+                <button type="button" onClick={() => setStep(2)}
+                  className="text-xs text-zinc-400 underline">← Cart</button>
               </div>
+            </div>
+          </div>
+
+          <div className="max-w-lg mx-auto px-4 pt-4 pb-36 space-y-4">
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-4">
+
+              {/* Method */}
+              <div className="space-y-2">
+                <label className="label">Payment Method</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["cash", "check", "echeck", "bank-transfer", "store-credit"] as PaymentMethod[]).map((m) => (
+                    <button key={m} type="button"
+                      onClick={() => onMethodChange(m)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
+                        ${pmtMethod === m
+                          ? "bg-zinc-900 text-white border-zinc-900"
+                          : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
+                      {PMT_METHOD_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Account */}
+              {pmtMethod !== "store-credit" && (
+                <div className="space-y-2">
+                  <label className="label">Account</label>
+                  {pmtMethod === "cash" ? (
+                    <div className="flex gap-2">
+                      {CASH_ACCOUNTS.map((a) => (
+                        <button key={a} type="button"
+                          onClick={() => setPmtAccount(a)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
+                            ${pmtAccount === a
+                              ? "bg-zinc-900 text-white border-zinc-900"
+                              : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      {BANK_ACCOUNTS.map((a) => (
+                        <button key={a} type="button"
+                          onClick={() => setPmtAccount(a)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
+                            ${pmtAccount === a
+                              ? "bg-zinc-900 text-white border-zinc-900"
+                              : "bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400"}`}>
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Check number */}
+              {pmtMethod === "check" && (
+                <div className="space-y-1">
+                  <label className="label">Check No.</label>
+                  <input type="text" inputMode="numeric" value={pmtCheckNum}
+                    onChange={(e) => setPmtCheckNum(e.target.value)}
+                    className="input w-full" placeholder="e.g. 1042" />
+                </div>
+              )}
+
+              {/* Payee */}
+              <div className="space-y-1">
+                <label className="label">Payee</label>
+                <input type="text" value={pmtPayee}
+                  onChange={(e) => setPmtPayee(e.target.value)}
+                  className="input w-full" placeholder="Payee name" />
+              </div>
+
+              {/* Date + Amount */}
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-1">
+                  <label className="label">Date</label>
+                  <input type="date" value={pmtDate}
+                    onChange={(e) => setPmtDate(e.target.value)}
+                    className="input w-full" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="label">Amount ($)</label>
+                  <input type="number" inputMode="numeric" value={pmtAmount}
+                    onChange={(e) => setPmtAmount(e.target.value)}
+                    className="input w-full" placeholder="0" />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="label">Description</label>
+                <input type="text" value={pmtDescription}
+                  onChange={(e) => setPmtDescription(e.target.value)}
+                  className="input w-full" placeholder="e.g. Diamond purchase" />
+              </div>
+
+              {/* Memo */}
+              <div className="space-y-1">
+                <label className="label">Memo</label>
+                <textarea value={pmtMemo}
+                  onChange={(e) => setPmtMemo(e.target.value)}
+                  className="input w-full h-20 resize-none" placeholder="Additional notes…" />
+              </div>
+
+            </div>
+          </div>
+
+          {/* Step 3 footer */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
+            <div className="max-w-lg mx-auto space-y-2">
+              <button type="button" onClick={completePayment}
+                disabled={!pmtPayee.trim() || !pmtDate || !pmtAmount}
+                className="btn-primary w-full disabled:opacity-40">
+                Complete Purchase
+              </button>
+              <button type="button" onClick={() => setStep(2)}
+                className="w-full text-center text-xs text-zinc-400 underline">
+                ← Back to Cart
+              </button>
             </div>
           </div>
         </>
@@ -618,7 +829,10 @@ export default function BuyPage() {
           vendorEmail={activeVendor?.email}
           cart={cart}
           screenTotal={screenTotal}
-          onClose={() => setShowReceipt(false)}
+          onClose={() => {
+            setShowReceipt(false);
+            if (payment !== null) startNew();
+          }}
         />
       )}
     </div>
