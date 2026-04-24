@@ -526,7 +526,7 @@ export default function BuyPage() {
             </div>
           </div>
 
-          <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+          <div className="max-w-lg mx-auto px-4 pt-4 space-y-4 pb-96">
 
             {/* FJ name + type */}
             {fjMode && (
@@ -588,20 +588,20 @@ export default function BuyPage() {
               </div>
             )}
 
-            {/* Cart */}
-            {cart.length > 0 && (
-              <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="label">Cart ({cart.length})</label>
-                  <button type="button" onClick={() => setShowReceipt(true)}
-                    className="text-xs text-zinc-500 underline">Receipt</button>
-                </div>
-                <div className="space-y-2">
+          </div>
+
+          {/* Step 2 sticky footer — cart + actions merged */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 z-10">
+            <div className="max-w-lg mx-auto">
+
+              {/* Cart items */}
+              {cart.length > 0 && (
+                <div className="max-h-[38vh] overflow-y-auto px-4 pt-3 space-y-0">
                   {cart.map((item) => {
                     if (item.itemType === "fj") {
                       const fj = item as FJCartItem;
                       return (
-                        <div key={fj.id} className="py-1 border-b border-zinc-100 last:border-0">
+                        <div key={fj.id} className="py-1.5 border-b border-zinc-100 last:border-0">
                           <div className="flex justify-between items-start text-sm">
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-zinc-800">{fj.fjName}</p>
@@ -613,9 +613,9 @@ export default function BuyPage() {
                                 className="text-zinc-300 hover:text-red-400 text-lg leading-none">×</button>
                             </div>
                           </div>
-                          <div className="pl-3 mt-1 space-y-0.5">
+                          <div className="pl-3 mt-0.5 space-y-0.5">
                             {fj.components.map((c) => (
-                              <div key={c.id} className="flex justify-between text-xs text-zinc-500">
+                              <div key={c.id} className="flex justify-between text-xs text-zinc-400">
                                 <span className="truncate">{cartLabel(c)}</span>
                                 <span className="ml-2 shrink-0">{fmtTotal(c.lineTotal)}</span>
                               </div>
@@ -625,7 +625,7 @@ export default function BuyPage() {
                       );
                     }
                     return (
-                      <div key={item.id} className="flex justify-between items-start text-sm py-1 border-b border-zinc-100 last:border-0">
+                      <div key={item.id} className="flex justify-between items-start text-sm py-1.5 border-b border-zinc-100 last:border-0">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-zinc-800 truncate">{cartLabel(item)}</p>
                           <p className="text-zinc-400 text-xs">{cartDetail(item)}</p>
@@ -639,58 +639,58 @@ export default function BuyPage() {
                     );
                   })}
                 </div>
+              )}
 
-                {/* Vendor adjustment */}
-                <div className="pt-2 border-t border-zinc-100 space-y-2">
-                  <p className="text-xs text-zinc-400">Vendor&apos;s ask — leave blank if accepted at calc total</p>
-                  <div className="flex gap-2">
+              {/* Vendor ask */}
+              {cart.length > 0 && (
+                <div className="px-4 pt-2 pb-1 border-t border-zinc-100 space-y-1.5">
+                  <div className="flex gap-2 items-center">
                     <input
                       type="number"
                       inputMode="numeric"
                       value={vendorAsk}
                       onChange={(e) => setVendorAsk(e.target.value)}
-                      className="input flex-1"
-                      placeholder={`Calc: ${fmtTotal(screenTotal)}`}
+                      className="input flex-1 text-sm py-1.5"
+                      placeholder={`Vendor ask (calc: ${fmtTotal(screenTotal)})`}
                     />
                     <button type="button" onClick={applyVendorAsk}
                       disabled={!vendorAskNum || vendorAskNum === screenTotal}
-                      className="btn-primary px-4 disabled:opacity-40">
+                      className="btn-primary px-3 py-1.5 text-sm disabled:opacity-40">
                       Prorate
                     </button>
                   </div>
                   {vendorAskNum > 0 && vendorAskNum !== screenTotal && (
                     <p className="text-xs text-zinc-500">
-                      {askDelta > 0 ? "+" : ""}{fmtTotal(askDelta)} distributed across {cart.length} item{cart.length !== 1 ? "s" : ""} proportionally
+                      {askDelta > 0 ? "+" : ""}{fmtTotal(askDelta)} across {cart.length} item{cart.length !== 1 ? "s" : ""}
                     </p>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Step 2 sticky footer */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
-            <div className="max-w-lg mx-auto space-y-2">
-              <div className="flex justify-between items-center">
+              {/* Total + actions */}
+              <div className="px-4 py-3 border-t border-zinc-100 flex justify-between items-center">
                 <div>
                   <p className="text-xs text-zinc-400 uppercase tracking-wide">Total</p>
                   <p className="text-2xl font-bold text-zinc-900">{screenTotal > 0 ? fmtTotal(screenTotal) : "—"}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end gap-1.5">
+                  <div className="flex items-center gap-2">
+                    {cart.length > 0 && (
+                      <button type="button" onClick={() => setShowReceipt(true)}
+                        className="btn-primary px-4">Receipt</button>
+                    )}
+                    {cart.length > 0 && (
+                      <button type="button" onClick={enterPaymentStep}
+                        className="btn-primary px-4">Payment →</button>
+                    )}
+                  </div>
                   {cart.length > 0 && (
-                    <button type="button" onClick={() => setShowReceipt(true)}
-                      className="btn-primary px-4">Receipt</button>
-                  )}
-                  {cart.length > 0 && (
-                    <button type="button" onClick={enterPaymentStep}
-                      className="btn-primary px-4">Payment →</button>
+                    <button type="button" onClick={startNew}
+                      className="text-xs text-zinc-400 underline">New</button>
                   )}
                 </div>
               </div>
-              {cart.length > 0 && (
-                <button type="button" onClick={startNew}
-                  className="w-full text-center text-xs text-zinc-400 underline">New</button>
-              )}
+
             </div>
           </div>
         </>
@@ -819,20 +819,20 @@ export default function BuyPage() {
                   className="input w-full" placeholder="Payee name" />
               </div>
 
-              {/* Date + Amount */}
-              <div className="flex gap-3">
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs text-zinc-500">Date</p>
-                  <input type="date" value={pmtDate}
-                    onChange={(e) => setPmtDate(e.target.value)}
-                    className="input w-full" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs text-zinc-500">Amount ($)</p>
-                  <input type="number" inputMode="numeric" value={pmtAmount}
-                    onChange={(e) => setPmtAmount(e.target.value)}
-                    className="input w-full" placeholder="0" />
-                </div>
+              {/* Date */}
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Date</p>
+                <input type="date" value={pmtDate}
+                  onChange={(e) => setPmtDate(e.target.value)}
+                  className="input w-full" />
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-1">
+                <p className="text-xs text-zinc-500">Amount ($)</p>
+                <input type="number" inputMode="numeric" value={pmtAmount}
+                  onChange={(e) => setPmtAmount(e.target.value)}
+                  className="input w-full" placeholder="0" />
               </div>
 
               {/* Description */}
