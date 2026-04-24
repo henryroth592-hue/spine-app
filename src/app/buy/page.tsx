@@ -880,9 +880,11 @@ export default function BuyPage() {
       {showReceipt && (
         <ReceiptModal
           vendor={selectedVendor}
+          buyer={selectedBuyer}
           vendorEmail={activeVendor?.email}
           cart={cart}
           screenTotal={screenTotal}
+          payments={payments}
           onClose={() => {
             setShowReceipt(false);
             if (payments.length > 0) startNew();
