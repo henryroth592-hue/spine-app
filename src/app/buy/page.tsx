@@ -881,7 +881,7 @@ export default function BuyPage() {
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
             <div className="max-w-lg mx-auto space-y-2">
               <button type="button" onClick={finalizePurchase}
-                disabled={payments.length === 0 || !signature}
+                disabled={payments.length === 0}
                 className="btn-primary w-full disabled:opacity-40">
                 Complete Purchase
               </button>
