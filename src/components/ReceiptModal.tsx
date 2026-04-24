@@ -15,10 +15,11 @@ interface Props {
   cart: CartItem[];
   screenTotal: number;
   payments?: PaymentRecord[];
+  signature?: string;
   onClose: () => void;
 }
 
-export default function ReceiptModal({ vendor, buyer, vendorEmail, cart, screenTotal, payments = [], onClose }: Props) {
+export default function ReceiptModal({ vendor, buyer, vendorEmail, cart, screenTotal, payments = [], signature, onClose }: Props) {
   const [mode,        setMode]        = useState<Mode>("detailed");
   const [email,       setEmail]       = useState(vendorEmail ?? "");
   const [officeEmail, setOfficeEmail] = useState(OFFICE_EMAIL);
@@ -27,10 +28,10 @@ export default function ReceiptModal({ vendor, buyer, vendorEmail, cart, screenT
 
   const appBaseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const text = mode === "office"
-    ? buildOfficeText(vendor, buyer ?? "", cart, screenTotal, payments)
+    ? buildOfficeText(vendor, buyer ?? "", cart, screenTotal, payments, signature)
     : buildReceiptText(vendor, cart, screenTotal, mode === "summary");
   const html = mode === "office"
-    ? buildOfficeHtml(vendor, buyer ?? "", cart, screenTotal, payments, appBaseUrl)
+    ? buildOfficeHtml(vendor, buyer ?? "", cart, screenTotal, payments, appBaseUrl, signature)
     : buildReceiptHtml(vendor, cart, screenTotal, appBaseUrl, mode === "summary");
 
   const activeEmail    = mode === "office" ? officeEmail : email;

@@ -243,6 +243,7 @@ export function buildOfficeText(
   cart: CartItem[],
   screenTotal: number,
   payments: PaymentRecord[],
+  signature?: string,
 ): string {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const line = "-".repeat(36);
@@ -297,6 +298,13 @@ export function buildOfficeText(
     else lines.push("FULLY PAID");
   }
 
+  if (signature) {
+    lines.push("");
+    lines.push("SELLER SIGNATURE");
+    lines.push("-".repeat(36));
+    lines.push("[Signature on file]");
+  }
+
   return lines.join("\n");
 }
 
@@ -307,6 +315,7 @@ export function buildOfficeHtml(
   screenTotal: number,
   payments: PaymentRecord[],
   appBaseUrl: string,
+  signature?: string,
 ): string {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const rows = expandCart(cart);
@@ -391,6 +400,12 @@ export function buildOfficeHtml(
         </tr>
       </table>
       ${paymentsHtml}
+      ${signature ? `
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e5e7eb;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1e2a45;text-transform:uppercase;letter-spacing:.05em;">Seller Signature</p>
+      <p style="margin:0 0 10px;font-size:12px;color:#6b7280;">By signing below, I certify that the items listed are recycled goods obtained directly from consumers.</p>
+      <img src="${signature}" alt="Seller signature" style="max-width:100%;height:80px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;display:block;" />
+    </div>` : ""}
     </div>
   </div>
 </body>

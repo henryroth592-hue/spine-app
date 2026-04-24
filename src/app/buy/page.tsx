@@ -10,6 +10,7 @@ import CustomForm from "@/components/CustomForm";
 import MeleeForm from "@/components/MeleeForm";
 import GemForm from "@/components/GemForm";
 import ReceiptModal from "@/components/ReceiptModal";
+import SignaturePad from "@/components/SignaturePad";
 
 type AppTab = "melee" | "parcels" | "singles" | "metals" | "gems" | "custom";
 
@@ -128,6 +129,7 @@ export default function BuyPage() {
 
   // ── Payment ────────────────────────────────────────────────────────────────
   const [payments,       setPayments]       = useState<PaymentRecord[]>([]);
+  const [signature,      setSignature]      = useState("");
   const [pmtMethod,      setPmtMethod]      = useState<PaymentMethod>("cash");
   const [pmtAccount,     setPmtAccount]     = useState("PA Cash");
   const [pmtCheckNum,    setPmtCheckNum]    = useState("");
@@ -273,6 +275,7 @@ export default function BuyPage() {
 
   function enterPaymentStep() {
     setPayments([]);
+    setSignature("");
     setPmtPayee(selectedVendor);
     setPmtDate(new Date().toISOString().split("T")[0]);
     setPmtAmount(String(Math.round(screenTotal)));
@@ -327,6 +330,7 @@ export default function BuyPage() {
     setSelectedBuyer("");
     setShowReceipt(false);
     setPayments([]);
+    setSignature("");
   }
 
   function completeFJ() {
@@ -857,13 +861,27 @@ export default function BuyPage() {
                 + Add Payment
               </button>
             </div>
+
+            {/* Signature */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 space-y-3">
+              <div>
+                <label className="label">Seller Signature</label>
+                <p className="text-xs text-zinc-400 mt-1">
+                  By signing below, I certify that the items listed are recycled goods obtained directly from consumers.
+                </p>
+              </div>
+              <SignaturePad
+                onSigned={(dataUrl) => setSignature(dataUrl)}
+                onCleared={() => setSignature("")}
+              />
+            </div>
           </div>
 
           {/* Step 3 footer */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 px-4 py-4 z-10">
             <div className="max-w-lg mx-auto space-y-2">
               <button type="button" onClick={finalizePurchase}
-                disabled={payments.length === 0}
+                disabled={payments.length === 0 || !signature}
                 className="btn-primary w-full disabled:opacity-40">
                 Complete Purchase
               </button>
@@ -885,6 +903,7 @@ export default function BuyPage() {
           cart={cart}
           screenTotal={screenTotal}
           payments={payments}
+          signature={signature}
           onClose={() => {
             setShowReceipt(false);
             if (payments.length > 0) startNew();
