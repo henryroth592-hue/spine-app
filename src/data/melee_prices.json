@@ -8,6 +8,17 @@
   ],
   "assortments": [
     {
+      "group": "Mix",
+      "key": "mix_mix_all_shapes_and_qualities",
+      "label": "Mix all shapes and qualities",
+      "prices": {
+        "-2.5": 43,
+        "2.5-6.5": 46,
+        "6.5-11": 59,
+        "11-15.5": 90
+      }
+    },
+    {
       "group": "Rounds",
       "key": "rnd_wh_j_si2",
       "label": "WH(J+) SI2+",
@@ -236,6 +247,50 @@
         "2.5-6.5": 1,
         "6.5-11": 1,
         "11-15.5": 1
+      }
+    },
+    {
+      "group": "PR & Bags",
+      "key": "pr_pr_and_bags_wh_si2",
+      "label": "PR and BAGS WH SI2+",
+      "prices": {
+        "-2.5": 70,
+        "2.5-6.5": 70,
+        "6.5-11": 70,
+        "11-15.5": 80
+      }
+    },
+    {
+      "group": "PR & Bags",
+      "key": "pr_pr_and_bags_wh_i1_2",
+      "label": "PR and BAGS WH I1-2",
+      "prices": {
+        "-2.5": 30,
+        "2.5-6.5": 30,
+        "6.5-11": 30,
+        "11-15.5": 40
+      }
+    },
+    {
+      "group": "Single Cuts",
+      "key": "sc_single_cuts_wh_si2",
+      "label": "Single Cuts Wh SI2+",
+      "prices": {
+        "-2.5": 90,
+        "2.5-6.5": 90,
+        "6.5-11": 90,
+        "11-15.5": 90
+      }
+    },
+    {
+      "group": "Single Cuts",
+      "key": "sc_single_cuts_wh_i1_2",
+      "label": "Single Cuts WH i1-2",
+      "prices": {
+        "-2.5": 30,
+        "2.5-6.5": 30,
+        "6.5-11": 30,
+        "11-15.5": 30
       }
     }
   ]
